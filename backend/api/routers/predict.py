@@ -3,10 +3,10 @@ Draft prediction endpoint
 """
 
 import logging
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, Response
 
 from backend.api.schemas import PredictDraftRequest, PredictDraftResponse, ErrorResponse
-from backend.api.deps import verify_api_key, get_correlation_id, rate_limiter
+from backend.api.deps import verify_api_key, get_correlation_id, check_rate_limit
 from backend.services.inference import inference_service
 from backend.services.cache import cache_service
 
@@ -19,6 +19,7 @@ router = APIRouter(prefix="/predict-draft", tags=["prediction"])
     "",
     response_model=PredictDraftResponse,
     responses={
+        401: {"model": ErrorResponse, "description": "Authentication required"},
         400: {"model": ErrorResponse, "description": "Invalid request"},
         422: {"model": ErrorResponse, "description": "Validation error"},
         429: {"model": ErrorResponse, "description": "Rate limit exceeded"},
@@ -28,6 +29,7 @@ router = APIRouter(prefix="/predict-draft", tags=["prediction"])
 async def predict_draft(
     request_data: PredictDraftRequest,
     request: Request,
+    response: Response,
     api_key: str = Depends(verify_api_key)
 ):
     """
@@ -39,14 +41,19 @@ async def predict_draft(
     - Human-readable explanations
     - Model version used
     
-    **Rate Limited:** 60 requests per minute per IP
+    **Authentication Required:** X-STRATMANCER-KEY header
+    
+    **Rate Limited:**
+    - Per-IP: 60 requests/minute
+    - Per-API-Key: 600 requests/minute
+    - Global: 3000 requests/minute
     
     **Cached:** Identical requests are cached for 60 seconds
     """
     correlation_id = get_correlation_id(request)
     
-    # Rate limiting
-    await rate_limiter.check_rate_limit(request)
+    # Rate limiting (with API key for per-key limits)
+    await check_rate_limit(request, response, api_key)
     
     try:
         # Check cache first

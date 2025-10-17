@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
 from backend.config import settings
-from backend.api.routers import health, predict, models, team_optimizer
+from backend.api.routers import health, predict, models, team_optimizer, admin
 
 # Configure logging
 logging.basicConfig(
@@ -29,13 +29,38 @@ async def lifespan(app: FastAPI):
     logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
     logger.info("=" * 70)
     
+    # Initialize rate limiter
+    from backend.services.rate_limit import init_rate_limiter
+    rate_limiter = init_rate_limiter(
+        redis_host=settings.REDIS_HOST,
+        redis_port=settings.REDIS_PORT,
+        redis_db=settings.REDIS_DB,
+        use_redis=settings.USE_REDIS
+    )
+    logger.info(f"Rate limiter initialized (backend: {'redis' if rate_limiter.using_redis else 'memory'})")
+    logger.info(f"Rate limits: IP={settings.RATE_LIMIT_PER_IP}/min, "
+               f"Key={settings.RATE_LIMIT_PER_KEY}/min, Global={settings.RATE_LIMIT_GLOBAL}/min")
+    
+    # Initialize background scheduler
+    from backend.services.scheduler import init_scheduler
+    scheduler = init_scheduler()
+    scheduler.start()
+    logger.info("Background jobs started successfully")
+    
     # Initialize services (lazy loading, so just log)
-    logger.info("Services will be initialized on first use (lazy loading)")
+    logger.info("ML services will be initialized on first use (lazy loading)")
     
     yield
     
     # Shutdown
     logger.info("Shutting down StratMancer API")
+    
+    # Stop background scheduler
+    from backend.services.scheduler import get_scheduler
+    scheduler = get_scheduler()
+    if scheduler:
+        scheduler.shutdown()
+        logger.info("Background scheduler stopped")
 
 
 # Create FastAPI app
@@ -117,6 +142,7 @@ app.include_router(health.router)
 app.include_router(predict.router)
 app.include_router(models.router)
 app.include_router(team_optimizer.router)
+app.include_router(admin.router)
 
 
 # Root endpoint

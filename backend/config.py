@@ -28,7 +28,7 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
     ]
     
-    # Redis Cache (optional)
+    # Redis (for cache and rate limiting)
     REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
     REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
     REDIS_DB: int = 0
@@ -47,9 +47,11 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     
-    # Rate Limiting
+    # Rate Limiting (Token Bucket with Redis)
     RATE_LIMIT_ENABLED: bool = True
-    RATE_LIMIT_PER_MINUTE: int = 60
+    RATE_LIMIT_PER_IP: int = 60        # requests per minute
+    RATE_LIMIT_PER_KEY: int = 600      # requests per minute
+    RATE_LIMIT_GLOBAL: int = 3000      # requests per minute
     
     class Config:
         env_file = ".env"
