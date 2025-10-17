@@ -15,6 +15,7 @@ from ..utils.rate_limiter import RateLimiter
 from ..transformers.match_transformer import MatchTransformer
 from ..storage.data_storage import DataStorage
 from ..transformers.schema import MatchData
+from .puuid_cache import PUUIDCache
 
 logging.basicConfig(
     level=logging.INFO,
@@ -57,6 +58,7 @@ class MatchCollector:
             base_path=str(self.config.get_storage_path()),
             formats=self.config.get_storage_formats()
         )
+        self.puuid_cache = PUUIDCache()
         
         self.save_raw = save_raw
         self.current_patch = self.api_client.get_current_patch()
@@ -64,7 +66,9 @@ class MatchCollector:
         # Track processed matches to avoid duplicates
         self.processed_match_ids: Set[str] = set()
         
+        cache_stats = self.puuid_cache.stats()
         logger.info(f"Match collector initialized for patch {self.current_patch}")
+        logger.info(f"PUUID cache loaded: {cache_stats['total_entries']} entries")
     
     def collect_for_rank(self, rank: str, target_matches: int = 100) -> List[MatchData]:
         """
@@ -119,6 +123,9 @@ class MatchCollector:
         if collected_matches:
             self.storage.save_matches(collected_matches, rank)
         
+        # Save PUUID cache
+        self.puuid_cache.save()
+        
         logger.info(f"Collection complete for {rank}")
         return collected_matches
     
@@ -142,6 +149,9 @@ class MatchCollector:
             except Exception as e:
                 logger.error(f"Failed to collect for rank {rank}: {e}", exc_info=True)
                 continue
+        
+        # Save PUUID cache
+        self.puuid_cache.save()
         
         # Print statistics
         stats = self.storage.get_statistics()
@@ -174,22 +184,23 @@ class MatchCollector:
                 if league and 'entries' in league:
                     entries = league['entries'][:max_summoners]
                     
-                    for entry in entries:
-                        summoner_id = entry.get('summonerId')
-                        if summoner_id:
-                            try:
-                                # Get summoner to obtain PUUID
-                                summoner = self.api_client._request(
-                                    f"{self.api_client.base_url}/lol/summoner/v4/summoners/{summoner_id}"
-                                )
-                                if summoner:
-                                    summoners.append({
-                                        'puuid': summoner['puuid'],
-                                        'summonerId': summoner_id
-                                    })
-                            except Exception as e:
-                                logger.debug(f"Failed to get summoner {summoner_id}: {e}")
-                                continue
+                    total_entries = len(entries)
+                    logger.info(f"Processing {total_entries} league entries for {rank}")
+                    
+                    for idx, entry in enumerate(entries, 1):
+                        if len(summoners) >= max_summoners:
+                            break
+                        
+                        # New API returns PUUID directly!
+                        puuid = entry.get('puuid')
+                        if puuid:
+                            summoners.append({
+                                'puuid': puuid,
+                                'summonerId': entry.get('summonerId', puuid[:16])  # For backward compat
+                            })
+                            
+                            if len(summoners) % 50 == 0 or len(summoners) == max_summoners:
+                                logger.info(f"Progress: {len(summoners)}/{max_summoners} summoners ({idx}/{total_entries} entries processed)")
                 
             except Exception as e:
                 logger.error(f"Failed to get {rank} league: {e}")
@@ -214,25 +225,22 @@ class MatchCollector:
                             if len(summoners) >= max_summoners:
                                 break
                             
-                            summoner_id = entry.get('summonerId')
-                            if summoner_id:
-                                try:
-                                    summoner = self.api_client._request(
-                                        f"{self.api_client.base_url}/lol/summoner/v4/summoners/{summoner_id}"
-                                    )
-                                    if summoner:
-                                        summoners.append({
-                                            'puuid': summoner['puuid'],
-                                            'summonerId': summoner_id
-                                        })
-                                except Exception as e:
-                                    logger.debug(f"Failed to get summoner {summoner_id}: {e}")
-                                    continue
+                            # New API returns PUUID directly!
+                            puuid = entry.get('puuid')
+                            if puuid:
+                                summoners.append({
+                                    'puuid': puuid,
+                                    'summonerId': entry.get('summonerId', puuid[:16])  # For backward compat
+                                })
+                        
+                        if len(summoners) % 50 == 0 or len(summoners) >= max_summoners:
+                            logger.info(f"Progress: {len(summoners)}/{max_summoners} summoners (page {page}, {rank} {division})")
                         
                         page += 1
                         
-                        # Limit pages to avoid excessive requests
-                        if page > 5:
+                        # Limit pages to avoid excessive requests (each page has ~200 entries)
+                        if page > 10:
+                            logger.info(f"Reached page limit for {rank} {division}")
                             break
                 
                 except Exception as e:
@@ -242,7 +250,7 @@ class MatchCollector:
         return summoners
     
     def _collect_summoner_matches(self, puuid: str, rank: str, 
-                                  limit: int = 20) -> List[MatchData]:
+                                  limit: int = 20, queue_id: int = 420) -> List[MatchData]:
         """
         Collect and process matches for a summoner.
         

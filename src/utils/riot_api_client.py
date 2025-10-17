@@ -73,12 +73,30 @@ class RiotAPIClient:
         self.base_url = self.BASE_URLS[self.region]
         self.regional_url = self.BASE_URLS[self.REGIONAL_ROUTING.get(self.region, 'americas')]
         
-        # Session for connection pooling
+        # Session for connection pooling with retry adapter
         self.session = requests.Session()
         self.session.headers.update({
             'X-Riot-Token': self.api_key,
             'Accept': 'application/json'
         })
+        
+        # Configure retry strategy for connection issues
+        from requests.adapters import HTTPAdapter
+        from urllib3.util.retry import Retry
+        
+        retry_strategy = Retry(
+            total=5,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["GET"]
+        )
+        adapter = HTTPAdapter(
+            max_retries=retry_strategy,
+            pool_connections=10,
+            pool_maxsize=20
+        )
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
         
         logger.info(f"Riot API client initialized for region: {region}")
     
@@ -100,7 +118,7 @@ class RiotAPIClient:
         self.rate_limiter.acquire()
         
         try:
-            response = self.session.get(url, params=params, timeout=10)
+            response = self.session.get(url, params=params, timeout=30)
             
             # Log rate limit status
             if response.status_code == 429:
@@ -250,9 +268,11 @@ class RiotAPIClient:
                 return f"{parts[0]}.{parts[1]}"
             
         except Exception as e:
-            logger.error(f"Failed to get current patch: {e}")
+            logger.warning(f"Failed to get patch from DDragon: {e}")
         
-        return "unknown"
+        # Fallback to a reasonable recent patch
+        logger.warning("Using fallback patch version 15.20")
+        return "15.20"
     
     def get_champion_data(self) -> Dict[str, Any]:
         """

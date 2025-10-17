@@ -1,0 +1,634 @@
+# Champion Tag Overrides for StratMancer ML Pipeline
+# Comprehensive overrides for popular and competitive champions
+#
+# Format:
+#   champion_id:
+#     role: Top | Jgl | Mid | ADC | Sup
+#     damage: AP | AD | Mix
+#     engage: 0-3 (0=none, 3=high)
+#     hard_cc: 0-3 (hard crowd control)
+#     poke: 0-3 (poke/harass potential)
+#     splitpush: 0-3 (splitpush effectiveness)
+#     scaling_early: 0-3 (early game power)
+#     scaling_mid: 0-3 (mid game power)
+#     scaling_late: 0-3 (late game power)
+#     frontline: 0-3 (tankiness/frontline)
+#     skill_cap: 0-3 (mechanical difficulty)
+#
+# Champion IDs: https://developer.riotgames.com/docs/lol#data-dragon
+
+# === TOP LANE ===
+
+266:  # Aatrox - Darkin Blade
+  role: Top
+  damage: AD
+  engage: 2
+  hard_cc: 2
+  poke: 1
+  splitpush: 2
+  scaling_early: 2
+  scaling_mid: 3
+  scaling_late: 3
+  frontline: 2
+  skill_cap: 3
+
+84:  # Akali - Rogue Assassin
+  role: Top
+  damage: AP
+  engage: 2
+  hard_cc: 0
+  poke: 1
+  splitpush: 2
+  scaling_early: 1
+  scaling_mid: 3
+  scaling_late: 2
+  frontline: 0
+  skill_cap: 3
+
+23:  # Tryndamere - Barbarian King
+  role: Top
+  damage: AD
+  engage: 1
+  hard_cc: 1
+  poke: 0
+  splitpush: 3
+  scaling_early: 2
+  scaling_mid: 2
+  scaling_late: 3
+  frontline: 1
+  skill_cap: 1
+
+24:  # Jax - Grandmaster at Arms
+  role: Top
+  damage: Mix
+  engage: 2
+  hard_cc: 1
+  poke: 0
+  splitpush: 3
+  scaling_early: 1
+  scaling_mid: 2
+  scaling_late: 3
+  frontline: 2
+  skill_cap: 2
+
+86:  # Garen - Might of Demacia
+  role: Top
+  damage: AD
+  engage: 1
+  hard_cc: 1
+  poke: 0
+  splitpush: 1
+  scaling_early: 2
+  scaling_mid: 2
+  scaling_late: 2
+  frontline: 3
+  skill_cap: 1
+
+114:  # Fiora - Grand Duelist
+  role: Top
+  damage: AD
+  engage: 1
+  hard_cc: 1
+  poke: 1
+  splitpush: 3
+  scaling_early: 2
+  scaling_mid: 2
+  scaling_late: 3
+  frontline: 1
+  skill_cap: 3
+
+420:  # Illaoi - Kraken Priestess
+  role: Top
+  damage: AD
+  engage: 1
+  hard_cc: 0
+  poke: 2
+  splitpush: 2
+  scaling_early: 2
+  scaling_mid: 3
+  scaling_late: 2
+  frontline: 2
+  skill_cap: 2
+
+85:  # Mordekaiser - Iron Revenant
+  role: Top
+  damage: AP
+  engage: 1
+  hard_cc: 1
+  poke: 1
+  splitpush: 2
+  scaling_early: 2
+  scaling_mid: 3
+  scaling_late: 2
+  frontline: 3
+  skill_cap: 1
+
+# === JUNGLE ===
+
+64:  # Lee Sin - Blind Monk
+  role: Jgl
+  damage: AD
+  engage: 3
+  hard_cc: 2
+  poke: 1
+  splitpush: 0
+  scaling_early: 3
+  scaling_mid: 2
+  scaling_late: 1
+  frontline: 1
+  skill_cap: 3
+
+60:  # Elise - Spider Queen
+  role: Jgl
+  damage: AP
+  engage: 2
+  hard_cc: 2
+  poke: 1
+  splitpush: 0
+  scaling_early: 3
+  scaling_mid: 2
+  scaling_late: 1
+  frontline: 1
+  skill_cap: 2
+
+121:  # Kha'Zix - Voidreaver
+  role: Jgl
+  damage: AD
+  engage: 2
+  hard_cc: 1
+  poke: 1
+  splitpush: 1
+  scaling_early: 2
+  scaling_mid: 3
+  scaling_late: 2
+  frontline: 0
+  skill_cap: 2
+
+11:  # Master Yi - Wuju Bladesman
+  role: Jgl
+  damage: AD
+  engage: 1
+  hard_cc: 0
+  poke: 0
+  splitpush: 2
+  scaling_early: 1
+  scaling_mid: 2
+  scaling_late: 3
+  frontline: 0
+  skill_cap: 1
+
+56:  # Nocturne - Eternal Nightmare
+  role: Jgl
+  damage: AD
+  engage: 3
+  hard_cc: 1
+  poke: 0
+  splitpush: 1
+  scaling_early: 2
+  scaling_mid: 2
+  scaling_late: 2
+  frontline: 1
+  skill_cap: 1
+
+234:  # Viego - Ruined King
+  role: Jgl
+  damage: AD
+  engage: 2
+  hard_cc: 2
+  poke: 1
+  splitpush: 1
+  scaling_early: 2
+  scaling_mid: 3
+  scaling_late: 2
+  frontline: 1
+  skill_cap: 3
+
+# === MID LANE ===
+
+103:  # Ahri - Nine-Tailed Fox
+  role: Mid
+  damage: AP
+  engage: 1
+  hard_cc: 2
+  poke: 3
+  splitpush: 1
+  scaling_early: 2
+  scaling_mid: 3
+  scaling_late: 2
+  frontline: 0
+  skill_cap: 2
+
+1:  # Annie - Dark Child
+  role: Mid
+  damage: AP
+  engage: 1
+  hard_cc: 3
+  poke: 2
+  splitpush: 0
+  scaling_early: 2
+  scaling_mid: 2
+  scaling_late: 2
+  frontline: 0
+  skill_cap: 1
+
+157:  # Yasuo - Unforgiven
+  role: Mid
+  damage: AD
+  engage: 2
+  hard_cc: 2
+  poke: 1
+  splitpush: 2
+  scaling_early: 2
+  scaling_mid: 3
+  scaling_late: 3
+  frontline: 1
+  skill_cap: 3
+
+238:  # Zed - Master of Shadows
+  role: Mid
+  damage: AD
+  engage: 3
+  hard_cc: 0
+  poke: 2
+  splitpush: 2
+  scaling_early: 2
+  scaling_mid: 3
+  scaling_late: 2
+  frontline: 0
+  skill_cap: 3
+
+61:  # Orianna - Lady of Clockwork
+  role: Mid
+  damage: AP
+  engage: 1
+  hard_cc: 2
+  poke: 3
+  splitpush: 0
+  scaling_early: 1
+  scaling_mid: 2
+  scaling_late: 3
+  frontline: 0
+  skill_cap: 3
+
+134:  # Syndra - Dark Sovereign
+  role: Mid
+  damage: AP
+  engage: 1
+  hard_cc: 2
+  poke: 3
+  splitpush: 0
+  scaling_early: 2
+  scaling_mid: 2
+  scaling_late: 2
+  frontline: 0
+  skill_cap: 2
+
+777:  # Yone - Unforgotten
+  role: Mid
+  damage: Mix
+  engage: 2
+  hard_cc: 2
+  poke: 1
+  splitpush: 2
+  scaling_early: 1
+  scaling_mid: 2
+  scaling_late: 3
+  frontline: 1
+  skill_cap: 3
+
+517:  # Sylas - Unshackled
+  role: Mid
+  damage: AP
+  engage: 2
+  hard_cc: 2
+  poke: 1
+  splitpush: 1
+  scaling_early: 2
+  scaling_mid: 3
+  scaling_late: 2
+  frontline: 1
+  skill_cap: 3
+
+# === ADC (BOTTOM) ===
+
+22:  # Ashe - Frost Archer
+  role: ADC
+  damage: AD
+  engage: 1
+  hard_cc: 2
+  poke: 3
+  splitpush: 0
+  scaling_early: 1
+  scaling_mid: 2
+  scaling_late: 3
+  frontline: 0
+  skill_cap: 1
+
+51:  # Caitlyn - Sheriff of Piltover
+  role: ADC
+  damage: AD
+  engage: 0
+  hard_cc: 1
+  poke: 3
+  splitpush: 0
+  scaling_early: 2
+  scaling_mid: 2
+  scaling_late: 3
+  frontline: 0
+  skill_cap: 2
+
+81:  # Ezreal - Prodigal Explorer
+  role: ADC
+  damage: AD
+  engage: 0
+  hard_cc: 0
+  poke: 3
+  splitpush: 0
+  scaling_early: 1
+  scaling_mid: 2
+  scaling_late: 3
+  frontline: 0
+  skill_cap: 2
+
+202:  # Jhin - Virtuoso
+  role: ADC
+  damage: AD
+  engage: 0
+  hard_cc: 2
+  poke: 3
+  splitpush: 0
+  scaling_early: 2
+  scaling_mid: 2
+  scaling_late: 2
+  frontline: 0
+  skill_cap: 2
+
+222:  # Jinx - Loose Cannon
+  role: ADC
+  damage: AD
+  engage: 0
+  hard_cc: 1
+  poke: 2
+  splitpush: 0
+  scaling_early: 1
+  scaling_mid: 2
+  scaling_late: 3
+  frontline: 0
+  skill_cap: 2
+
+236:  # Lucian - Purifier
+  role: ADC
+  damage: AD
+  engage: 1
+  hard_cc: 0
+  poke: 2
+  splitpush: 0
+  scaling_early: 3
+  scaling_mid: 2
+  scaling_late: 2
+  frontline: 0
+  skill_cap: 2
+
+498:  # Xayah - Rebel
+  role: ADC
+  damage: AD
+  engage: 0
+  hard_cc: 2
+  poke: 2
+  splitpush: 0
+  scaling_early: 2
+  scaling_mid: 2
+  scaling_late: 3
+  frontline: 0
+  skill_cap: 2
+
+67:  # Vayne - Night Hunter
+  role: ADC
+  damage: AD
+  engage: 0
+  hard_cc: 1
+  poke: 1
+  splitpush: 1
+  scaling_early: 1
+  scaling_mid: 2
+  scaling_late: 3
+  frontline: 0
+  skill_cap: 3
+
+# === SUPPORT ===
+
+12:  # Alistar - Minotaur
+  role: Sup
+  damage: AP
+  engage: 3
+  hard_cc: 3
+  poke: 0
+  splitpush: 0
+  scaling_early: 2
+  scaling_mid: 2
+  scaling_late: 2
+  frontline: 3
+  skill_cap: 2
+
+53:  # Blitzcrank - Great Steam Golem
+  role: Sup
+  damage: AP
+  engage: 2
+  hard_cc: 3
+  poke: 0
+  splitpush: 0
+  scaling_early: 2
+  scaling_mid: 2
+  scaling_late: 1
+  frontline: 2
+  skill_cap: 1
+
+89:  # Leona - Radiant Dawn
+  role: Sup
+  damage: AP
+  engage: 3
+  hard_cc: 3
+  poke: 0
+  splitpush: 0
+  scaling_early: 2
+  scaling_mid: 2
+  scaling_late: 2
+  frontline: 3
+  skill_cap: 1
+
+25:  # Morgana - Fallen Angel
+  role: Sup
+  damage: AP
+  engage: 1
+  hard_cc: 3
+  poke: 2
+  splitpush: 0
+  scaling_early: 2
+  scaling_mid: 2
+  scaling_late: 2
+  frontline: 0
+  skill_cap: 1
+
+143:  # Zyra - Rise of the Thorns
+  role: Sup
+  damage: AP
+  engage: 1
+  hard_cc: 2
+  poke: 3
+  splitpush: 0
+  scaling_early: 2
+  scaling_mid: 2
+  scaling_late: 2
+  frontline: 0
+  skill_cap: 2
+
+412:  # Thresh - Chain Warden
+  role: Sup
+  damage: AP
+  engage: 2
+  hard_cc: 3
+  poke: 1
+  splitpush: 0
+  scaling_early: 2
+  scaling_mid: 2
+  scaling_late: 2
+  frontline: 1
+  skill_cap: 3
+
+267:  # Nami - Tidecaller
+  role: Sup
+  damage: AP
+  engage: 1
+  hard_cc: 2
+  poke: 2
+  splitpush: 0
+  scaling_early: 2
+  scaling_mid: 2
+  scaling_late: 2
+  frontline: 0
+  skill_cap: 2
+
+526:  # Rell - Iron Maiden
+  role: Sup
+  damage: AP
+  engage: 3
+  hard_cc: 3
+  poke: 0
+  splitpush: 0
+  scaling_early: 2
+  scaling_mid: 2
+  scaling_late: 2
+  frontline: 3
+  skill_cap: 2
+
+# === FLEX PICKS (Multiple Roles) ===
+
+875:  # Sett - Boss
+  role: Top
+  damage: AD
+  engage: 2
+  hard_cc: 2
+  poke: 0
+  splitpush: 1
+  scaling_early: 2
+  scaling_mid: 3
+  scaling_late: 2
+  frontline: 3
+  skill_cap: 2
+
+223:  # Tahm Kench - River King
+  role: Sup
+  damage: Mix
+  engage: 1
+  hard_cc: 2
+  poke: 1
+  splitpush: 1
+  scaling_early: 2
+  scaling_mid: 2
+  scaling_late: 2
+  frontline: 3
+  skill_cap: 1
+
+142:  # Urgot - Dreadnought
+  role: Top
+  damage: AD
+  engage: 1
+  hard_cc: 1
+  poke: 2
+  splitpush: 2
+  scaling_early: 2
+  scaling_mid: 3
+  scaling_late: 3
+  frontline: 2
+  skill_cap: 2
+
+80:  # Pantheon - Unbreakable Spear
+  role: Sup
+  damage: AD
+  engage: 3
+  hard_cc: 2
+  poke: 2
+  splitpush: 0
+  scaling_early: 3
+  scaling_mid: 2
+  scaling_late: 1
+  frontline: 1
+  skill_cap: 2
+
+# === HIGH PRIORITY META CHAMPIONS ===
+
+145:  # Kai'Sa - Daughter of the Void
+  role: ADC
+  damage: Mix
+  engage: 1
+  hard_cc: 0
+  poke: 2
+  splitpush: 0
+  scaling_early: 1
+  scaling_mid: 2
+  scaling_late: 3
+  frontline: 0
+  skill_cap: 2
+
+141:  # Kayn - Shadow Reaper
+  role: Jgl
+  damage: AD
+  engage: 2
+  hard_cc: 2
+  poke: 1
+  splitpush: 1
+  scaling_early: 1
+  scaling_mid: 3
+  scaling_late: 3
+  frontline: 1
+  skill_cap: 2
+
+887:  # Gwen - Hallowed Seamstress
+  role: Top
+  damage: AP
+  engage: 1
+  hard_cc: 1
+  poke: 1
+  splitpush: 2
+  scaling_early: 1
+  scaling_mid: 2
+  scaling_late: 3
+  frontline: 1
+  skill_cap: 2
+
+350:  # Yuumi - Magical Cat
+  role: Sup
+  damage: AP
+  engage: 0
+  hard_cc: 1
+  poke: 2
+  splitpush: 0
+  scaling_early: 1
+  scaling_mid: 2
+  scaling_late: 3
+  frontline: 0
+  skill_cap: 1
+
+# Add more champion overrides as needed
+# Format: champion_id: {role, damage, engage, hard_cc, poke, splitpush, 
+#         scaling_early, scaling_mid, scaling_late, frontline, skill_cap}
