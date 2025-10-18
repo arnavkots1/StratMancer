@@ -321,6 +321,9 @@ def assemble_features(
         objectives_vector       # Objective-based features
     ])
     
+    # Replace any NaN or inf values with 0.0
+    X_vec = np.nan_to_num(X_vec, nan=0.0, posinf=0.0, neginf=0.0)
+    
     # Create named features dictionary for interpretability
     named = {
         'match_id': match.get('match_id', 'unknown'),

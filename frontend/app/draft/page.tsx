@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import ChampionPicker from '@/components/ChampionPicker';
 import RoleSlots from '@/components/RoleSlots';
 import PredictionCard from '@/components/PredictionCard';
+import RecommendationCard from '@/components/RecommendationCard';
 import { api } from '@/lib/api';
 import type { 
   DraftState, 
@@ -47,6 +48,12 @@ export default function DraftPage() {
   const [predicting, setPredicting] = useState(false);
   const [prediction, setPrediction] = useState<PredictionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Recommendation state
+  const [showRecommendations, setShowRecommendations] = useState(false);
+  const [recommendations, setRecommendations] = useState<any>(null);
+  const [recommendationLoading, setRecommendationLoading] = useState(false);
+  const [recommendationError, setRecommendationError] = useState<string | null>(null);
 
   // Define the draft sequence for Gold rank (with bans)
   // Format: { team, action, role }
@@ -190,6 +197,65 @@ export default function DraftPage() {
     }
   };
 
+  const handleGetRecommendations = async () => {
+    if (!currentDraftAction) return;
+
+    setRecommendationLoading(true);
+    setRecommendationError(null);
+    setShowRecommendations(true);
+
+    try {
+      const { team, action, role } = currentDraftAction;
+
+      // Build draft state for API
+      const draftForAPI = {
+        elo: draftState.elo,
+        side: team,
+        blue: {
+          top: draftState.blue.top ? parseInt(draftState.blue.top.id) : undefined,
+          jungle: draftState.blue.jungle ? parseInt(draftState.blue.jungle.id) : undefined,
+          mid: draftState.blue.mid ? parseInt(draftState.blue.mid.id) : undefined,
+          adc: draftState.blue.adc ? parseInt(draftState.blue.adc.id) : undefined,
+          support: draftState.blue.support ? parseInt(draftState.blue.support.id) : undefined,
+          bans: draftState.blueBans.map(c => parseInt(c.id)),
+        },
+        red: {
+          top: draftState.red.top ? parseInt(draftState.red.top.id) : undefined,
+          jungle: draftState.red.jungle ? parseInt(draftState.red.jungle.id) : undefined,
+          mid: draftState.red.mid ? parseInt(draftState.red.mid.id) : undefined,
+          adc: draftState.red.adc ? parseInt(draftState.red.adc.id) : undefined,
+          support: draftState.red.support ? parseInt(draftState.red.support.id) : undefined,
+          bans: draftState.redBans.map(c => parseInt(c.id)),
+        },
+        patch: draftState.patch || '15.20',
+        top_n: 5,
+      };
+
+      let result;
+      if (action === 'ban') {
+        result = await api.getBanRecommendations(draftForAPI);
+      } else if (action === 'pick' && role) {
+        result = await api.getPickRecommendations({ ...draftForAPI, role });
+      }
+
+      setRecommendations(result);
+    } catch (err: any) {
+      console.error('Recommendation failed:', err);
+      setRecommendationError(err.message || 'Failed to get recommendations');
+    } finally {
+      setRecommendationLoading(false);
+    }
+  };
+
+  const handleSelectRecommendation = (championId: number) => {
+    const champion = champions.find(c => parseInt(c.id) === championId);
+    if (champion) {
+      handleChampionSelect(champion);
+      setShowRecommendations(false);
+      setRecommendations(null);
+    }
+  };
+
   const handleResetDraft = () => {
     setDraftState({
       blue: {
@@ -216,6 +282,8 @@ export default function DraftPage() {
     setDraftStep(0);
     setPickTimer(30);
     setTimerActive(false);
+    setShowRecommendations(false);
+    setRecommendations(null);
   };
 
   const handleChampionSelect = (champion: Champion) => {
@@ -330,10 +398,24 @@ export default function DraftPage() {
                     </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm text-gray-400 mb-1">Phase</div>
-                  <div className="text-lg font-bold text-gold-500">
-                    {currentDraftAction.action === 'ban' ? 'BANNING' : 'PICKING'}
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={handleGetRecommendations}
+                    disabled={recommendationLoading}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition ${
+                      currentDraftAction.team === 'blue'
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : 'bg-red-600 hover:bg-red-700 text-white'
+                    } ${recommendationLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <Sparkles className="w-5 h-5" />
+                    {recommendationLoading ? 'Analyzing...' : 'AI Suggest'}
+                  </button>
+                  <div className="text-right">
+                    <div className="text-sm text-gray-400 mb-1">Phase</div>
+                    <div className="text-lg font-bold text-gold-500">
+                      {currentDraftAction.action === 'ban' ? 'BANNING' : 'PICKING'}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -481,6 +563,25 @@ export default function DraftPage() {
           onSelectChampion={handleChampionSelect}
           currentDraftAction={currentDraftAction}
         />
+
+        {/* Recommendation Modal */}
+        {showRecommendations && currentDraftAction && (
+          <RecommendationCard
+            recommendations={recommendations?.recommendations || []}
+            mode={currentDraftAction.action === 'ban' ? 'ban' : 'pick'}
+            role={currentDraftAction.role}
+            side={currentDraftAction.team}
+            champions={champions}
+            loading={recommendationLoading}
+            error={recommendationError || undefined}
+            onSelect={handleSelectRecommendation}
+            onClose={() => {
+              setShowRecommendations(false);
+              setRecommendations(null);
+              setRecommendationError(null);
+            }}
+          />
+        )}
       </div>
     </div>
   );
