@@ -2,10 +2,16 @@
 Model registry endpoints
 """
 
+import json
+import logging
+from pathlib import Path
 from fastapi import APIRouter, HTTPException
 
 from backend.api.schemas import ModelsRegistryResponse, ModelCard
 from backend.services.model_registry import model_registry
+from backend.config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/models", tags=["models"])
 
@@ -46,6 +52,35 @@ async def get_models_registry():
             status_code=500,
             detail=f"Failed to load model registry: {str(e)}"
         )
+
+
+@router.get("/feature-map")
+async def get_feature_map():
+    """
+    Get the feature map containing champion data, tags, and metadata.
+    This is used by the frontend to display champion information.
+    """
+    try:
+        feature_map_path = Path(settings.FEATURE_MAP_PATH)
+        
+        if not feature_map_path.exists():
+            logger.error(f"Feature map not found at {feature_map_path}")
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Feature map not found. Please run tag_builder.py to generate it."
+            )
+        
+        with open(feature_map_path, 'r', encoding='utf-8') as f:
+            feature_map = json.load(f)
+        
+        logger.info(f"Loaded feature map: {feature_map['meta']['num_champ']} champions, patch {feature_map['meta']['patch']}")
+        return feature_map
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to load feature map: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to load feature map: {str(e)}")
 
 
 @router.post("/registry/reload")

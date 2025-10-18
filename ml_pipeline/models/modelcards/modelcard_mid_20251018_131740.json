@@ -1,0 +1,14 @@
+{
+  "elo": "mid",
+  "model_type": "xgb",
+  "timestamp": "2025-10-18T13:17:40.871415",
+  "features": 3309,
+  "train_size": 80,
+  "val_size": 10,
+  "test_size": 10,
+  "calibrated": true,
+  "source_patch": "15.20",
+  "feature_version": "v1",
+  "model_file": "draft_mid_xgb_20251018_131740.pkl",
+  "calibrator_file": "calibrator_mid_20251018_131740.pkl"
+}

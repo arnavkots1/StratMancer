@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
 from backend.config import settings
-from backend.api.routers import health, predict, models, team_optimizer, admin
+from backend.api.routers import health, predict, models, team_optimizer, admin, recommend
 
 # Configure logging
 logging.basicConfig(
@@ -142,6 +142,7 @@ app.include_router(health.router)
 app.include_router(predict.router)
 app.include_router(models.router)
 app.include_router(team_optimizer.router)
+app.include_router(recommend.router)
 app.include_router(admin.router)
 
 

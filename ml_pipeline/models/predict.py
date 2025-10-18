@@ -67,10 +67,11 @@ def load_model(elo_group: str, model_dir: str = "ml_pipeline/models/trained") ->
     latest_model = sorted(model_files)[-1]
     
     # Extract timestamp and model type from filename
-    # Format: draft_{elo}_{model_type}_{timestamp}.pkl
+    # Format: draft_{elo}_{model_type}_{date}_{time}.pkl
+    # Example: draft_mid_xgb_20251018_131740.pkl
     parts = latest_model.stem.split('_')
-    timestamp = parts[-1]
-    model_type = parts[-2]
+    timestamp = f"{parts[-2]}_{parts[-1]}"  # date_time: 20251018_131740
+    model_type = parts[-3]
     
     # Find corresponding calibrator
     calibrator_file = model_path / f"calibrator_{elo_group}_{timestamp}.pkl"
