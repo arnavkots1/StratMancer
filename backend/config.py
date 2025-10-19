@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # Authentication
     API_KEY: Optional[str] = os.getenv("STRATMANCER_API_KEY", "dev-key-change-in-production")
     
-    # CORS
+    # CORS - Security: Only allow specific origins
     CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:5173",
@@ -27,6 +27,16 @@ class Settings(BaseSettings):
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
     ]
+    
+    # Security Settings
+    MAX_PAYLOAD_SIZE: int = int(os.getenv("MAX_PAYLOAD_SIZE", "32768"))  # 32KB
+    REQUEST_TIMEOUT: int = int(os.getenv("REQUEST_TIMEOUT", "3"))  # 3 seconds
+    ENABLE_METRICS: bool = os.getenv("ENABLE_METRICS", "true").lower() == "true"
+    ENABLE_TRACING: bool = os.getenv("ENABLE_TRACING", "true").lower() == "true"
+    
+    # Logging Security
+    LOG_FORMAT: str = os.getenv("LOG_FORMAT", "json")  # json or text
+    SANITIZE_LOGS: bool = True  # Remove sensitive data from logs
     
     # Redis (for cache and rate limiting)
     REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")

@@ -208,14 +208,14 @@ def refresh_model_registry():
         from backend.services.model_registry import model_registry
         
         # Get old state
-        old_models = model_registry.get_all_models()
+        old_models = model_registry.get_all_modelcards()
         old_count = len(old_models)
         
         # Refresh registry
-        model_registry.refresh()
+        model_registry.reload()
         
         # Get new state
-        new_models = model_registry.get_all_models()
+        new_models = model_registry.get_all_modelcards()
         new_count = len(new_models)
         
         # Log changes

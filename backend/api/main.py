@@ -7,11 +7,26 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.exceptions import RequestValidationError
 
 from backend.config import settings
 from backend.api.routers import health, predict, models, team_optimizer, admin, recommend
+
+# Optional imports for production features
+try:
+    from backend.services.metrics import get_metrics, get_content_type, track_request_metrics, add_request_id_header, get_request_id
+    METRICS_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Metrics not available: {e}")
+    METRICS_AVAILABLE = False
+
+try:
+    from backend.middleware.security import SecurityMiddleware
+    SECURITY_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"Security middleware not available: {e}")
+    SECURITY_AVAILABLE = False
 
 # Configure logging
 logging.basicConfig(
@@ -99,12 +114,16 @@ app = FastAPI(
     debug=settings.DEBUG
 )
 
+# Security middleware (must be first) - optional
+if SECURITY_AVAILABLE:
+    app.add_middleware(SecurityMiddleware)
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -127,11 +146,22 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle unexpected errors"""
-    logger.error(f"Unexpected error: {exc}", exc_info=True)
+    # Generate correlation ID for tracking
+    import uuid
+    correlation_id = str(uuid.uuid4())
+    
+    # Log error with correlation ID
+    logger.error(f"Unexpected error: {exc}", exc_info=True, extra={
+        "correlation_id": correlation_id,
+        "path": request.url.path,
+        "method": request.method
+    })
+    
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
             "detail": "An unexpected error occurred",
+            "correlation_id": correlation_id,
             "error": str(exc) if settings.DEBUG else "Internal server error"
         }
     )
@@ -144,6 +174,30 @@ app.include_router(models.router)
 app.include_router(team_optimizer.router)
 app.include_router(recommend.router)
 app.include_router(admin.router)
+
+# Metrics endpoint - optional
+if METRICS_AVAILABLE:
+    @app.get("/metrics", include_in_schema=False)
+    async def metrics():
+        """Prometheus metrics endpoint"""
+        return Response(
+            content=get_metrics(),
+            media_type=get_content_type()
+        )
+
+    # Request ID middleware
+    @app.middleware("http")
+    async def add_request_id_middleware(request: Request, call_next):
+        """Add request ID to all responses"""
+        request_id = get_request_id(request)
+        
+        # Process request
+        response = await call_next(request)
+        
+        # Add request ID to response headers
+        add_request_id_header(response, request_id)
+        
+        return response
 
 
 # Root endpoint

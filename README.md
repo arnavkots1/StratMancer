@@ -36,6 +36,10 @@ python run_collector.py --ranks GOLD PLATINUM DIAMOND --matches-per-rank 100
 - ✅ **Schema Validation**: Pydantic models ensure data integrity
 - ✅ **Error Recovery**: Exponential backoff, automatic retries
 - ✅ **Production Ready**: Logging, config management, unit tests
+- ✅ **Docker Support**: Containerized deployment with docker-compose
+- ✅ **Monitoring**: Prometheus metrics and OpenTelemetry tracing
+- ✅ **Security**: Request validation, rate limiting, payload size limits
+- ✅ **Testing**: Comprehensive API test suite with pytest
 
 ## Project Structure
 
@@ -206,9 +210,88 @@ After collecting data:
 
 See [SETUP_GUIDE.md](SETUP_GUIDE.md) for more help.
 
+## Production Deployment
+
+### Docker Deployment
+
+```bash
+# 1. Copy environment configuration
+cp env.example .env
+# Edit .env with your production settings
+
+# 2. Build and start all services
+docker-compose up --build
+
+# 3. Verify deployment
+curl http://localhost:8000/healthz
+curl http://localhost:3000
+```
+
+### Monitoring
+
+- **Metrics**: http://localhost:8000/metrics (Prometheus format)
+- **API Docs**: http://localhost:8000/docs
+- **Health Check**: http://localhost:8000/healthz
+
+### Testing
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=backend --cov=src
+
+# Run security tests
+pytest tests/test_security.py
+
+# Dependency scanning
+pip-audit
+safety check
+```
+
+## Security
+
+### Security Features
+
+- **Request Validation**: All inputs validated against schemas
+- **Rate Limiting**: Per-IP and per-API-key limits
+- **Payload Size Limits**: 32KB maximum request size
+- **Request Timeouts**: 3-second timeout per request
+- **CORS Protection**: Configurable origin allowlist
+- **Log Sanitization**: Sensitive data removed from logs
+- **Dependency Scanning**: Automated vulnerability detection
+
+### Security Recommendations
+
+1. **API Keys**: Use strong, unique API keys in production
+2. **CORS Origins**: Restrict to your domain only
+3. **HTTPS**: Always use HTTPS in production
+4. **Firewall**: Restrict access to necessary ports only
+5. **Updates**: Regularly update dependencies
+6. **Monitoring**: Monitor logs and metrics for anomalies
+
+### Environment Variables
+
+```bash
+# Required
+API_KEY=your-secure-api-key-here
+CORS_ORIGINS=https://yourdomain.com
+
+# Security
+MAX_PAYLOAD_SIZE=32768
+REQUEST_TIMEOUT=3
+SANITIZE_LOGS=true
+
+# Monitoring
+ENABLE_METRICS=true
+ENABLE_TRACING=true
+```
+
 ## Requirements
 
-- Python 3.8+
+- Python 3.11+
+- Docker & Docker Compose (for containerized deployment)
 - Riot Games API key (free at https://developer.riotgames.com/)
 - ~5-10 GB disk space for data
 

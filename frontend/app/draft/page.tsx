@@ -7,6 +7,7 @@ import RoleSlots from '@/components/RoleSlots';
 import PredictionCard from '@/components/PredictionCard';
 import RecommendationCard from '@/components/RecommendationCard';
 import { api } from '@/lib/api';
+import { getChampionImageUrl } from '@/lib/championImages';
 import type { 
   DraftState, 
   Champion, 
@@ -99,6 +100,14 @@ export default function DraftPage() {
     loadChampions();
   }, []);
 
+  // Auto-show recommendations when draft starts (disabled for now)
+  // useEffect(() => {
+  //   if (currentDraftAction && draftStep === 0) {
+  //     // Auto-show recommendations for the first pick/ban
+  //     handleGetRecommendations();
+  //   }
+  // }, [currentDraftAction, draftStep]);
+
   // Pick timer countdown
   useEffect(() => {
     if (!timerActive) return;
@@ -142,6 +151,8 @@ export default function DraftPage() {
         };
       });
 
+      console.log('Loaded champions:', champArray.length);
+      console.log('First few champions:', champArray.slice(0, 5));
       setChampions(champArray);
     } catch (err) {
       console.error('Failed to load champions:', err);
@@ -248,11 +259,16 @@ export default function DraftPage() {
   };
 
   const handleSelectRecommendation = (championId: number) => {
+    console.log('Selecting recommendation:', championId);
+    console.log('Available champions:', champions.length);
     const champion = champions.find(c => parseInt(c.id) === championId);
+    console.log('Found champion:', champion);
     if (champion) {
       handleChampionSelect(champion);
       setShowRecommendations(false);
       setRecommendations(null);
+    } else {
+      console.error('Champion not found for ID:', championId);
     }
   };
 
@@ -398,24 +414,10 @@ export default function DraftPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={handleGetRecommendations}
-                    disabled={recommendationLoading}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition ${
-                      currentDraftAction.team === 'blue'
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                        : 'bg-red-600 hover:bg-red-700 text-white'
-                    } ${recommendationLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  >
-                    <Sparkles className="w-5 h-5" />
-                    {recommendationLoading ? 'Analyzing...' : 'AI Suggest'}
-                  </button>
-                  <div className="text-right">
-                    <div className="text-sm text-gray-400 mb-1">Phase</div>
-                    <div className="text-lg font-bold text-gold-500">
-                      {currentDraftAction.action === 'ban' ? 'BANNING' : 'PICKING'}
-                    </div>
+                <div className="text-right">
+                  <div className="text-sm text-gray-400 mb-1">Phase</div>
+                  <div className="text-lg font-bold text-gold-500">
+                    {currentDraftAction.action === 'ban' ? 'BANNING' : 'PICKING'}
                   </div>
                 </div>
               </div>
@@ -552,6 +554,119 @@ export default function DraftPage() {
           </div>
         )}
 
+        {/* AI Recommendations Section */}
+        {currentDraftAction && (
+          <div className="mb-6">
+            <div className="card border-2 border-gold-500">
+              <div className="mb-4">
+                <h2 className="text-xl font-bold text-gold-500 mb-2">🤖 AI Recommendations</h2>
+                <p className="text-sm text-gray-400">
+                  Get smart suggestions for {currentDraftAction.action === 'ban' ? 'bans' : 'picks'} based on current draft state
+                </p>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={handleGetRecommendations}
+                  disabled={recommendationLoading}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition ${
+                    currentDraftAction.team === 'blue'
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                      : 'bg-red-600 hover:bg-red-700 text-white'
+                  } ${recommendationLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <Sparkles className="w-5 h-5" />
+                  {recommendationLoading ? 'Analyzing...' : `Get ${currentDraftAction.action === 'ban' ? 'Ban' : 'Pick'} Suggestions`}
+                </button>
+                
+                {recommendations && (
+                  <div className="text-sm text-gray-400">
+                    Found {recommendations.recommendations?.length || 0} recommendations
+                  </div>
+                )}
+              </div>
+
+              {/* Show recommendations inline */}
+              {recommendations && recommendations.recommendations && (
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {recommendations.recommendations.slice(0, 6).map((rec: any, index: number) => {
+                    const champion = champions.find(c => parseInt(c.id) === rec.champion_id);
+                    const value = currentDraftAction.action === 'ban' ? rec.threat_level : rec.win_gain;
+                    const valuePercent = value ? Math.abs(value * 100) : 0;
+                    const barWidth = Math.min(Math.max(valuePercent * 3, 5), 100);
+
+                    return (
+                      <div
+                        key={rec.champion_id}
+                        className="bg-gray-800 border border-gray-700 hover:border-gold-500 rounded-lg p-3 cursor-pointer transition group"
+                        onClick={() => handleSelectRecommendation(rec.champion_id)}
+                      >
+                        <div className="flex items-center gap-3">
+                          {/* Rank Badge */}
+                          <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                            index === 0 ? 'bg-gold-500 text-black' :
+                            index === 1 ? 'bg-gray-400 text-black' :
+                            index === 2 ? 'bg-amber-700 text-white' :
+                            'bg-gray-700 text-gray-300'
+                          }`}>
+                            {index + 1}
+                          </div>
+
+                          {/* Champion Portrait */}
+                          <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden border border-gray-600 group-hover:border-gold-500 transition">
+                            {champion ? (
+                              <img
+                                src={getChampionImageUrl(champion.name)}
+                                alt={rec.champion_name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  console.log('Image failed to load for:', champion.name, getChampionImageUrl(champion.name));
+                                  e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjMzc0MTUxIi8+Cjx0ZXh0IHg9IjIwIiB5PSIyNCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOUI5QjlCIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4/CjwvdGV4dD4KPC9zdmc+';
+                                }}
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-gray-700 flex items-center justify-center text-gray-500 text-xs">
+                                ?
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Champion Info */}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-bold text-white group-hover:text-gold-500 transition truncate">
+                              {rec.champion_name}
+                            </h4>
+                            
+                            {/* Value Bar */}
+                            <div className="flex items-center gap-1 mt-1">
+                              <div className="flex-1 bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className={`h-full ${currentDraftAction.action === 'ban' ? 'bg-red-500' : 'bg-green-500'} transition-all duration-300`}
+                                  style={{ width: `${barWidth}%` }}
+                                />
+                              </div>
+                              <span className={`text-xs font-bold ${currentDraftAction.action === 'ban' ? 'text-red-400' : 'text-green-400'} min-w-[40px] text-right`}>
+                                {currentDraftAction.action === 'ban' ? '' : '+'}{valuePercent.toFixed(1)}%
+                              </span>
+                            </div>
+
+                            {/* Top Reason */}
+                            {rec.reasons && rec.reasons[0] && (
+                              <div className="text-xs text-gray-400 mt-1 truncate">
+                                {rec.reasons[0]}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Champion Picker */}
         <ChampionPicker
           champions={champions}
@@ -564,8 +679,8 @@ export default function DraftPage() {
           currentDraftAction={currentDraftAction}
         />
 
-        {/* Recommendation Modal */}
-        {showRecommendations && currentDraftAction && (
+        {/* Recommendation Modal - Hidden since we show inline now */}
+        {false && showRecommendations && currentDraftAction && (
           <RecommendationCard
             recommendations={recommendations?.recommendations || []}
             mode={currentDraftAction.action === 'ban' ? 'ban' : 'pick'}

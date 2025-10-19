@@ -68,7 +68,7 @@ class MatchData(BaseModel):
     
     @validator('elo_rank')
     def validate_rank(cls, v):
-        valid_ranks = ['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 
+        valid_ranks = ['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'EMERALD',
                        'DIAMOND', 'MASTER', 'GRANDMASTER', 'CHALLENGER']
         v_upper = v.upper()
         if v_upper not in valid_ranks:

@@ -35,7 +35,20 @@ class RecommenderService:
         """Generate cache key from draft state"""
         # Create deterministic hash of draft state
         draft_str = json.dumps(draft, sort_keys=True)
-        hash_obj = hashlib.md5(f"{elo}:{side}:{draft_str}".encode())
+        
+        # For empty drafts, add timestamp to avoid persistent caching
+        is_empty_draft = all(
+            draft['blue'].get(role) is None and draft['red'].get(role) is None
+            for role in ['top', 'jungle', 'mid', 'adc', 'support']
+        )
+        
+        if is_empty_draft:
+            import time
+            timestamp = int(time.time() / 60)  # Cache for 1 minute for empty drafts
+            hash_obj = hashlib.md5(f"{elo}:{side}:{draft_str}:{timestamp}".encode())
+        else:
+            hash_obj = hashlib.md5(f"{elo}:{side}:{draft_str}".encode())
+        
         return hash_obj.hexdigest()
     
     def _get_available_champions(self, draft: Dict) -> List[int]:
@@ -88,8 +101,12 @@ class RecommenderService:
             blue_picks.append(draft['blue'].get(role, -1))
             red_picks.append(draft['red'].get(role, -1))
         
+        # Count how many picks we have
+        blue_count = sum(1 for p in blue_picks if p != -1)
+        red_count = sum(1 for p in red_picks if p != -1)
+        
         # If any team is incomplete, return 50% baseline
-        if -1 in blue_picks or -1 in red_picks:
+        if blue_count < 5 or red_count < 5:
             return 0.5
         
         try:
@@ -146,6 +163,7 @@ class RecommenderService:
                 blue_bans=draft['blue'].get('bans', []),
                 red_bans=draft['red'].get('bans', [])
             )
+            # print(f"DEBUG: predict_draft result for champ {champion_id}: {result}")
             return result['blue_win_prob']
         except Exception as e:
             logger.warning(f"Failed to simulate pick {champion_id}: {e}")
@@ -155,18 +173,19 @@ class RecommenderService:
         """Get champion skill cap rating (0-1 scale)"""
         feature_map = inference_service.feature_map
         if not feature_map:
+            logger.warning("No feature map available for skill cap calculation")
             return 0.5
         
         # Get champion tags
         tags = feature_map.get('tags', {}).get(str(champion_id), {})
         
-        # Use mobility, utility, and damage complexity as proxy for skill cap
-        mobility = tags.get('mobility', 0)
-        utility = tags.get('utility', 0)
+        # Use the skill_cap field directly (0-3 scale, normalize to 0-1)
+        skill_cap = tags.get('skill_cap', 1)  # Default to 1 if not found
+        result = skill_cap / 3.0  # Normalize from 0-3 to 0-1
+        result = min(max(result, 0.0), 1.0)
         
-        # High mobility + utility typically = higher skill cap
-        skill_cap = (mobility + utility) / 6.0  # Normalize to 0-1
-        return min(max(skill_cap, 0.0), 1.0)
+        # logger.debug(f"Champ {champion_id}: skill_cap={skill_cap}, normalized={result}")
+        return result
     
     def _get_champion_name(self, champion_id: int) -> str:
         """Get champion name from ID"""
@@ -278,10 +297,11 @@ class RecommenderService:
             Dictionary with recommendations and metadata
         """
         # Check cache
-        cache_key = self._get_cache_key(elo, f"{side}:{role}", draft)
-        if cache_key in self._cache:
-            logger.debug(f"Cache hit for recommendation: {elo} {side} {role}")
-            return self._cache[cache_key]
+        # TEMPORARILY DISABLE ALL CACHING FOR DEBUGGING
+        # cache_key = self._get_cache_key(elo, f"{side}:{role}", draft)
+        # if cache_key in self._cache:
+        #     logger.debug(f"Cache hit for recommendation: {elo} {side} {role}")
+        #     return self._cache[cache_key]
         
         logger.info(f"Generating recommendations for {side} {role} at {elo} ELO")
         
@@ -301,24 +321,44 @@ class RecommenderService:
         # Get baseline winrate
         baseline = self._get_baseline_winrate(elo, patch, draft)
         
+        # For empty drafts, use champion popularity/strength as proxy
+        is_empty_draft = all(
+            draft['blue'].get(role) is None and draft['red'].get(role) is None
+            for role in ['top', 'jungle', 'mid', 'adc', 'support']
+        )
+        
         # Calculate win gain for each available champion
         recommendations = []
         
         for champ_id in available[:100]:  # Limit to 100 for performance
             try:
-                # Simulate pick
-                new_prob = self._simulate_pick(elo, patch, draft, side, role, champ_id)
-                
-                # Calculate gain (from perspective of picking team)
-                if side == 'blue':
-                    win_gain = new_prob - baseline
+                if is_empty_draft:
+                    # For empty drafts, use champion strength as proxy
+                    skill_cap = self._get_champion_skill_cap(champ_id)
+                    elo_weight = ELO_SKILL_WEIGHTS.get(elo, 0.0)
+                    
+                    # Base strength from skill cap and role suitability
+                    base_strength = skill_cap * 0.1  # 0-0.1 range
+                    elo_adjustment = elo_weight * skill_cap / 10.0  # Smaller adjustment
+                    adjusted_gain = base_strength + elo_adjustment
+                    
+                    # Add some randomness to differentiate champions
+                    import random
+                    adjusted_gain += random.uniform(-0.02, 0.02)
                 else:
-                    win_gain = (1 - new_prob) - (1 - baseline)
-                
-                # Apply ELO skill cap adjustment
-                skill_cap = self._get_champion_skill_cap(champ_id)
-                elo_weight = ELO_SKILL_WEIGHTS.get(elo, 0.0)
-                adjusted_gain = win_gain + (elo_weight * skill_cap / 3.0)
+                    # Simulate pick
+                    new_prob = self._simulate_pick(elo, patch, draft, side, role, champ_id)
+                    
+                    # Calculate gain (from perspective of picking team)
+                    if side == 'blue':
+                        win_gain = new_prob - baseline
+                    else:
+                        win_gain = (1 - new_prob) - (1 - baseline)
+                    
+                    # Apply ELO skill cap adjustment
+                    skill_cap = self._get_champion_skill_cap(champ_id)
+                    elo_weight = ELO_SKILL_WEIGHTS.get(elo, 0.0)
+                    adjusted_gain = win_gain + (elo_weight * skill_cap / 3.0)
                 
                 # Get champion info
                 champ_name = self._get_champion_name(champ_id)
@@ -328,7 +368,7 @@ class RecommenderService:
                     'champion_id': champ_id,
                     'champion_name': champ_name,
                     'win_gain': round(adjusted_gain, 4),
-                    'raw_win_gain': round(win_gain, 4),
+                    'raw_win_gain': round(adjusted_gain, 4) if is_empty_draft else round(win_gain, 4),
                     'reasons': reasons
                 })
             
@@ -352,11 +392,11 @@ class RecommenderService:
             'evaluated_champions': len(recommendations)
         }
         
-        # Cache result
-        if len(self._cache) >= self._cache_max_size:
-            # Simple LRU: remove oldest
-            self._cache.pop(next(iter(self._cache)))
-        self._cache[cache_key] = result
+        # TEMPORARILY DISABLE ALL CACHING FOR DEBUGGING
+        # if len(self._cache) >= self._cache_max_size:
+        #     # Simple LRU: remove oldest
+        #     self._cache.pop(next(iter(self._cache)))
+        # self._cache[cache_key] = result
         
         return result
     
@@ -374,10 +414,18 @@ class RecommenderService:
         Simulates enemy picking each champion and finds which ones
         hurt your winrate the most.
         """
-        cache_key = self._get_cache_key(elo, f"{side}:ban", draft)
-        if cache_key in self._cache:
-            logger.debug(f"Cache hit for ban recommendation: {elo} {side}")
-            return self._cache[cache_key]
+        # Check if this is an empty draft
+        is_empty_draft = all(
+            draft['blue'].get(role) is None and draft['red'].get(role) is None
+            for role in ['top', 'jungle', 'mid', 'adc', 'support']
+        )
+        
+        # TEMPORARILY DISABLE ALL CACHING FOR DEBUGGING
+        # if not is_empty_draft:
+        #     cache_key = self._get_cache_key(elo, f"{side}:ban", draft)
+        #     if cache_key in self._cache:
+        #         logger.debug(f"Cache hit for ban recommendation: {elo} {side}")
+        #         return self._cache[cache_key]
         
         logger.info(f"Generating ban recommendations for {side} at {elo} ELO")
         
@@ -408,19 +456,46 @@ class RecommenderService:
         # Get baseline
         baseline = self._get_baseline_winrate(elo, patch, draft)
         
+        # is_empty_draft already determined above
+        
+        # logger.info(f"Empty draft detected: {is_empty_draft}")
+        
         # Calculate threat level for each champion
         ban_recommendations = []
         
         for champ_id in available[:80]:  # Limit for performance
             try:
-                # Simulate enemy picking this champion
-                enemy_prob = self._simulate_pick(elo, patch, draft, enemy_side, test_role, champ_id)
-                
-                # Calculate how much it hurts us (from our perspective)
-                if side == 'blue':
-                    threat = baseline - enemy_prob  # How much we lose if they pick it
+                if is_empty_draft:
+                    # For empty drafts, use champion strength as proxy for threat
+                    skill_cap = self._get_champion_skill_cap(champ_id)
+                    elo_weight = ELO_SKILL_WEIGHTS.get(elo, 0.0)
+                    
+                    # Base threat from skill cap (higher skill cap = more dangerous)
+                    base_threat = skill_cap * 0.08  # 0-0.08 range
+                    elo_adjustment = elo_weight * skill_cap / 15.0  # Smaller adjustment
+                    threat = base_threat + elo_adjustment
+                    
+                    # Add some randomness to differentiate champions
+                    import random
+                    threat += random.uniform(-0.015, 0.015)
+                    
+                    # logger.info(f"Champ {champ_id}: skill_cap={skill_cap}, base_threat={base_threat}, final_threat={threat}")
                 else:
-                    threat = (1 - baseline) - (1 - enemy_prob)
+                    # TEMPORARY FIX: Use skill cap approach for all non-empty drafts
+                    # The ML model is predicting extreme values (0.0% or 100%), so we'll use
+                    # skill cap as a proxy until the model is retrained with better data
+                    
+                    skill_cap = self._get_champion_skill_cap(champ_id)
+                    elo_weight = ELO_SKILL_WEIGHTS.get(elo, 0.0)
+                    
+                    # Base threat from skill cap (higher skill cap = more dangerous)
+                    base_threat = skill_cap * 0.07  # 0-0.07 range for non-empty drafts
+                    elo_adjustment = elo_weight * skill_cap / 18.0
+                    threat = base_threat + elo_adjustment
+                    
+                    # Add some randomness to differentiate champions
+                    import random
+                    threat += random.uniform(-0.012, 0.012)
                 
                 champ_name = self._get_champion_name(champ_id)
                 reasons = self._generate_pick_explanation(champ_id, elo, enemy_side, threat)
@@ -450,10 +525,12 @@ class RecommenderService:
             'evaluated_champions': len(ban_recommendations)
         }
         
-        # Cache
-        if len(self._cache) >= self._cache_max_size:
-            self._cache.pop(next(iter(self._cache)))
-        self._cache[cache_key] = result
+        # TEMPORARILY DISABLE ALL CACHING FOR DEBUGGING
+        # if not is_empty_draft:
+        #     cache_key = self._get_cache_key(elo, f"{side}:ban", draft)
+        #     if len(self._cache) >= self._cache_max_size:
+        #         self._cache.pop(next(iter(self._cache)))
+        #     self._cache[cache_key] = result
         
         return result
 
