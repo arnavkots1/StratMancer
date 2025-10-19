@@ -161,9 +161,14 @@ class InferenceService:
             else:
                 y_pred_proba = float(y_pred_proba)
         
-        # Apply calibration
-        y_pred_calibrated = calibrator.predict(np.array([y_pred_proba]))[0]
-        y_pred_calibrated = float(np.clip(y_pred_calibrated, 0.0, 1.0))
+        # Apply calibration (disabled - causes issues with partial drafts)
+        # The calibrator tends to map many predictions to the same values
+        # which is problematic for recommendations
+        # y_pred_calibrated = calibrator.predict(np.array([y_pred_proba]))[0]
+        # y_pred_calibrated = float(np.clip(y_pred_calibrated, 0.0, 1.0))
+        
+        # Use raw predictions instead (already clipped to 0-1 by XGBoost)
+        y_pred_calibrated = float(np.clip(y_pred_proba, 0.0, 1.0))
         
         # Calculate confidence (inverse entropy)
         probs = np.array([1 - y_pred_calibrated, y_pred_calibrated])
@@ -187,6 +192,49 @@ class InferenceService:
         }
         
         return result
+    
+    def predict_draft_with_roles(
+        self,
+        elo: str,
+        patch: str,
+        blue_draft: Dict,
+        red_draft: Dict
+    ) -> Dict[str, Any]:
+        """
+        Make draft prediction with role-aware champion placement.
+        
+        Args:
+            elo: ELO group ('low', 'mid', 'high')
+            patch: Patch version
+            blue_draft: Dict with role -> champion_id mapping (or None/-1 for empty)
+            red_draft: Dict with role -> champion_id mapping (or None/-1 for empty)
+        
+        Returns:
+            Prediction dictionary with probabilities and explanations
+        """
+        # Convert role-based draft to positional arrays
+        role_order = ['top', 'jgl', 'mid', 'adc', 'sup']
+        
+        blue_picks = []
+        red_picks = []
+        
+        for role in role_order:
+            blue_champ = blue_draft.get(role)
+            red_champ = red_draft.get(role)
+            
+            # Convert None to -1, keep existing values
+            blue_picks.append(blue_champ if blue_champ is not None else -1)
+            red_picks.append(red_champ if red_champ is not None else -1)
+        
+        # Use the existing predict_draft method with positional arrays
+        return self.predict_draft(
+            elo=elo,
+            patch=patch,
+            blue_picks=blue_picks,
+            red_picks=red_picks,
+            blue_bans=blue_draft.get('bans', []),
+            red_bans=red_draft.get('bans', [])
+        )
     
     def _generate_explanations(self, named_features: Dict, blue_win_prob: float) -> list:
         """Generate human-readable explanations from features"""

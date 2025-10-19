@@ -19,10 +19,10 @@ router = APIRouter(prefix="/recommend", tags=["recommendations"])
 class TeamDraftState(BaseModel):
     """Draft state for one team"""
     top: Optional[int] = Field(None, description="Champion ID for top (if picked)")
-    jungle: Optional[int] = Field(None, description="Champion ID for jungle (if picked)")
+    jgl: Optional[int] = Field(None, description="Champion ID for jungle (if picked)")
     mid: Optional[int] = Field(None, description="Champion ID for mid (if picked)")
     adc: Optional[int] = Field(None, description="Champion ID for ADC (if picked)")
-    support: Optional[int] = Field(None, description="Champion ID for support (if picked)")
+    sup: Optional[int] = Field(None, description="Champion ID for support (if picked)")
     bans: List[int] = Field(default_factory=list, description="List of banned champion IDs")
 
 
@@ -30,7 +30,7 @@ class RecommendPickRequest(BaseModel):
     """Request for pick recommendations"""
     elo: Literal["low", "mid", "high"] = Field(..., description="ELO group")
     side: Literal["blue", "red"] = Field(..., description="Team side")
-    role: Literal["top", "jungle", "mid", "adc", "support"] = Field(..., description="Role to fill")
+    role: Literal["top", "jgl", "mid", "adc", "sup"] = Field(..., description="Role to fill")
     blue: TeamDraftState = Field(..., description="Blue team draft state")
     red: TeamDraftState = Field(..., description="Red team draft state")
     patch: str = Field("15.20", description="Patch version")
@@ -41,21 +41,21 @@ class RecommendPickRequest(BaseModel):
             "example": {
                 "elo": "mid",
                 "side": "blue",
-                "role": "jungle",
+                "role": "jgl",
                 "blue": {
                     "top": 266,
-                    "jungle": None,
+                    "jgl": None,
                     "mid": None,
                     "adc": None,
-                    "support": None,
+                    "sup": None,
                     "bans": [53, 89]
                 },
                 "red": {
                     "top": 24,
-                    "jungle": None,
+                    "jgl": None,
                     "mid": None,
                     "adc": None,
-                    "support": None,
+                    "sup": None,
                     "bans": [421, 75]
                 },
                 "patch": "15.20",
@@ -183,18 +183,18 @@ async def recommend_pick(
         draft = {
             'blue': {
                 'top': request_data.blue.top,
-                'jungle': request_data.blue.jungle,
+                'jgl': request_data.blue.jgl,
                 'mid': request_data.blue.mid,
                 'adc': request_data.blue.adc,
-                'support': request_data.blue.support,
+                'sup': request_data.blue.sup,
                 'bans': request_data.blue.bans
             },
             'red': {
                 'top': request_data.red.top,
-                'jungle': request_data.red.jungle,
+                'jgl': request_data.red.jgl,
                 'mid': request_data.red.mid,
                 'adc': request_data.red.adc,
-                'support': request_data.red.support,
+                'sup': request_data.red.sup,
                 'bans': request_data.red.bans
             }
         }
@@ -268,18 +268,18 @@ async def recommend_ban(
         draft = {
             'blue': {
                 'top': request_data.blue.top,
-                'jungle': request_data.blue.jungle,
+                'jgl': request_data.blue.jgl,
                 'mid': request_data.blue.mid,
                 'adc': request_data.blue.adc,
-                'support': request_data.blue.support,
+                'sup': request_data.blue.sup,
                 'bans': request_data.blue.bans
             },
             'red': {
                 'top': request_data.red.top,
-                'jungle': request_data.red.jungle,
+                'jgl': request_data.red.jgl,
                 'mid': request_data.red.mid,
                 'adc': request_data.red.adc,
-                'support': request_data.red.support,
+                'sup': request_data.red.sup,
                 'bans': request_data.red.bans
             }
         }

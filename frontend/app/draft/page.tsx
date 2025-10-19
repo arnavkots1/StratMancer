@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { AlertCircle, Loader2, Sparkles } from 'lucide-react';
 import ChampionPicker from '@/components/ChampionPicker';
 import RoleSlots from '@/components/RoleSlots';
 import PredictionCard from '@/components/PredictionCard';
 import RecommendationCard from '@/components/RecommendationCard';
+import AnalysisPanel from '@/components/AnalysisPanel';
 import { api } from '@/lib/api';
 import { getChampionImageUrl } from '@/lib/championImages';
 import type { 
@@ -56,6 +57,11 @@ export default function DraftPage() {
   const [recommendationLoading, setRecommendationLoading] = useState(false);
   const [recommendationError, setRecommendationError] = useState<string | null>(null);
 
+  // Analysis state
+  const [showAnalysis, setShowAnalysis] = useState(false);
+  const [analysis, setAnalysis] = useState<any>(null);
+  const [analyzing, setAnalyzing] = useState(false);
+
   // Define the draft sequence for Gold rank (with bans)
   // Format: { team, action, role }
   const DRAFT_SEQUENCE = useMemo(() => {
@@ -100,13 +106,6 @@ export default function DraftPage() {
     loadChampions();
   }, []);
 
-  // Auto-show recommendations when draft starts (disabled for now)
-  // useEffect(() => {
-  //   if (currentDraftAction && draftStep === 0) {
-  //     // Auto-show recommendations for the first pick/ban
-  //     handleGetRecommendations();
-  //   }
-  // }, [currentDraftAction, draftStep]);
 
   // Pick timer countdown
   useEffect(() => {
@@ -142,11 +141,21 @@ export default function DraftPage() {
         
         const tags = featureMap.tags[champId] || {};
         
+        // Convert role string to array and normalize to uppercase
+        let roleArray: string[] = [];
+        if (tags.role) {
+          if (Array.isArray(tags.role)) {
+            roleArray = tags.role;
+          } else if (typeof tags.role === 'string') {
+            roleArray = [tags.role];
+          }
+        }
+        
         return {
           id: champId,
           name: name,
           key: champId,
-          roles: tags.role || [],
+          roles: roleArray.map((r: string) => r.toUpperCase()) as any,
           tags: tags,
         };
       });
@@ -200,6 +209,9 @@ export default function DraftPage() {
 
       const result = await api.predictDraft(requestData as any);
       setPrediction(result);
+      
+      // Automatically trigger analysis after prediction
+      handleAnalyzeDraft(requestData, result);
     } catch (err: any) {
       console.error('Prediction failed:', err);
       setError(err.message || 'Prediction failed. Please try again.');
@@ -208,7 +220,28 @@ export default function DraftPage() {
     }
   };
 
-  const handleGetRecommendations = async () => {
+  const handleAnalyzeDraft = async (draftData: any, predictionResult: PredictionResponse) => {
+    try {
+      setAnalyzing(true);
+      
+      const analysisData = {
+        ...draftData,
+        blue_win_prob: predictionResult.blue_win_prob,
+        red_win_prob: predictionResult.red_win_prob,
+      };
+
+      const result = await api.analyzeDraft(analysisData);
+      setAnalysis(result);
+      setShowAnalysis(true);
+    } catch (err: any) {
+      console.error('Analysis failed:', err);
+      // Don't show error to user - analysis is optional
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const handleGetRecommendations = useCallback(async () => {
     if (!currentDraftAction) return;
 
     setRecommendationLoading(true);
@@ -224,18 +257,18 @@ export default function DraftPage() {
         side: team,
         blue: {
           top: draftState.blue.top ? parseInt(draftState.blue.top.id) : undefined,
-          jungle: draftState.blue.jungle ? parseInt(draftState.blue.jungle.id) : undefined,
+          jgl: draftState.blue.jungle ? parseInt(draftState.blue.jungle.id) : undefined,
           mid: draftState.blue.mid ? parseInt(draftState.blue.mid.id) : undefined,
           adc: draftState.blue.adc ? parseInt(draftState.blue.adc.id) : undefined,
-          support: draftState.blue.support ? parseInt(draftState.blue.support.id) : undefined,
+          sup: draftState.blue.support ? parseInt(draftState.blue.support.id) : undefined,
           bans: draftState.blueBans.map(c => parseInt(c.id)),
         },
         red: {
           top: draftState.red.top ? parseInt(draftState.red.top.id) : undefined,
-          jungle: draftState.red.jungle ? parseInt(draftState.red.jungle.id) : undefined,
+          jgl: draftState.red.jungle ? parseInt(draftState.red.jungle.id) : undefined,
           mid: draftState.red.mid ? parseInt(draftState.red.mid.id) : undefined,
           adc: draftState.red.adc ? parseInt(draftState.red.adc.id) : undefined,
-          support: draftState.red.support ? parseInt(draftState.red.support.id) : undefined,
+          sup: draftState.red.support ? parseInt(draftState.red.support.id) : undefined,
           bans: draftState.redBans.map(c => parseInt(c.id)),
         },
         patch: draftState.patch || '15.20',
@@ -246,7 +279,16 @@ export default function DraftPage() {
       if (action === 'ban') {
         result = await api.getBanRecommendations(draftForAPI);
       } else if (action === 'pick' && role) {
-        result = await api.getPickRecommendations({ ...draftForAPI, role });
+        // Map frontend role names to backend role names
+        const roleMap: Record<string, 'top' | 'jgl' | 'mid' | 'adc' | 'sup'> = {
+          'jungle': 'jgl',
+          'support': 'sup',
+          'top': 'top',
+          'mid': 'mid',
+          'adc': 'adc'
+        };
+        const backendRole = roleMap[role] || role as 'top' | 'jgl' | 'mid' | 'adc' | 'sup';
+        result = await api.getPickRecommendations({ ...draftForAPI, role: backendRole });
       }
 
       setRecommendations(result);
@@ -256,7 +298,15 @@ export default function DraftPage() {
     } finally {
       setRecommendationLoading(false);
     }
-  };
+  }, [currentDraftAction, draftState, api]);
+
+  // Auto-show recommendations when draft step changes (only after draft starts)
+  useEffect(() => {
+    if (currentDraftAction && champions.length > 0 && draftStep > 0) {
+      // Auto-get recommendations for each new draft step (only after draft has started)
+      handleGetRecommendations();
+    }
+  }, [currentDraftAction, draftStep, champions.length, handleGetRecommendations]);
 
   const handleSelectRecommendation = (championId: number) => {
     console.log('Selecting recommendation:', championId);
@@ -300,6 +350,8 @@ export default function DraftPage() {
     setTimerActive(false);
     setShowRecommendations(false);
     setRecommendations(null);
+    setShowAnalysis(false);
+    setAnalysis(null);
   };
 
   const handleChampionSelect = (champion: Champion) => {
@@ -510,8 +562,9 @@ export default function DraftPage() {
           </div>
         </div>
 
-        {/* Team Composition - Read-only Display */}
-        <div className="grid lg:grid-cols-2 gap-6 mb-6">
+        {/* Team Composition and AI Recommendations - Same Row */}
+        <div className="grid lg:grid-cols-3 gap-6 mb-6">
+          {/* Blue Team */}
           <div className="card border-2 border-blue-500">
             <div className="mb-4">
               <h2 className="text-xl font-bold text-blue-400">Blue Team</h2>
@@ -529,6 +582,7 @@ export default function DraftPage() {
             />
           </div>
 
+          {/* Red Team */}
           <div className="card border-2 border-red-500">
             <div className="mb-4">
               <h2 className="text-xl font-bold text-red-400">Red Team</h2>
@@ -545,18 +599,9 @@ export default function DraftPage() {
               currentDraftAction={currentDraftAction}
             />
           </div>
-        </div>
 
-        {/* Prediction Results */}
-        {prediction && (
-          <div className="mb-6">
-            <PredictionCard prediction={prediction} />
-          </div>
-        )}
-
-        {/* AI Recommendations Section */}
-        {currentDraftAction && (
-          <div className="mb-6">
+          {/* AI Recommendations */}
+          {currentDraftAction && (
             <div className="card border-2 border-gold-500">
               <div className="mb-4">
                 <h2 className="text-xl font-bold text-gold-500 mb-2">🤖 AI Recommendations</h2>
@@ -565,22 +610,16 @@ export default function DraftPage() {
                 </p>
               </div>
               
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={handleGetRecommendations}
-                  disabled={recommendationLoading}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-bold transition ${
-                    currentDraftAction.team === 'blue'
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                      : 'bg-red-600 hover:bg-red-700 text-white'
-                  } ${recommendationLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                  <Sparkles className="w-5 h-5" />
-                  {recommendationLoading ? 'Analyzing...' : `Get ${currentDraftAction.action === 'ban' ? 'Ban' : 'Pick'} Suggestions`}
-                </button>
+              <div className="flex flex-col gap-2">
+                {recommendationLoading && (
+                  <div className="flex items-center justify-center gap-2 text-gold-500">
+                    <Sparkles className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Analyzing...</span>
+                  </div>
+                )}
                 
-                {recommendations && (
-                  <div className="text-sm text-gray-400">
+                {recommendations && !recommendationLoading && (
+                  <div className="text-sm text-gray-400 text-center">
                     Found {recommendations.recommendations?.length || 0} recommendations
                   </div>
                 )}
@@ -588,9 +627,24 @@ export default function DraftPage() {
 
               {/* Show recommendations inline */}
               {recommendations && recommendations.recommendations && (
-                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {recommendations.recommendations.slice(0, 6).map((rec: any, index: number) => {
-                    const champion = champions.find(c => parseInt(c.id) === rec.champion_id);
+                <div className="mt-4 space-y-2">
+                  {recommendations.recommendations.slice(0, 5).map((rec: any, index: number) => {
+                    // Find champion by ID (try both string and number comparison)
+                    const champion = champions.find(c => 
+                      c.id === rec.champion_id.toString() || 
+                      parseInt(c.id) === rec.champion_id ||
+                      c.name === rec.champion_name
+                    );
+                    
+                    // Check if champion is already picked (client-side verification)
+                    const isAlreadyPicked = 
+                      Object.values(draftState.blue).some((c: any) => c && parseInt(c.id) === rec.champion_id) ||
+                      Object.values(draftState.red).some((c: any) => c && parseInt(c.id) === rec.champion_id);
+                    
+                    // Skip this recommendation if champion is already picked
+                    if (isAlreadyPicked) {
+                      return null;
+                    }
                     const value = currentDraftAction.action === 'ban' ? rec.threat_level : rec.win_gain;
                     const valuePercent = value ? Math.abs(value * 100) : 0;
                     const barWidth = Math.min(Math.max(valuePercent * 3, 5), 100);
@@ -598,12 +652,18 @@ export default function DraftPage() {
                     return (
                       <div
                         key={rec.champion_id}
-                        className="bg-gray-800 border border-gray-700 hover:border-gold-500 rounded-lg p-3 cursor-pointer transition group"
-                        onClick={() => handleSelectRecommendation(rec.champion_id)}
+                        className="bg-gray-800 border border-gray-700 hover:border-gold-500 rounded-lg p-2 cursor-pointer transition group"
+                        onClick={() => {
+                          if (champion) {
+                            handleChampionSelect(champion);
+                            setShowRecommendations(false);
+                            setRecommendations(null);
+                          }
+                        }}
                       >
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           {/* Rank Badge */}
-                          <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                          <div className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
                             index === 0 ? 'bg-gold-500 text-black' :
                             index === 1 ? 'bg-gray-400 text-black' :
                             index === 2 ? 'bg-amber-700 text-white' :
@@ -613,39 +673,33 @@ export default function DraftPage() {
                           </div>
 
                           {/* Champion Portrait */}
-                          <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden border border-gray-600 group-hover:border-gold-500 transition">
-                            {champion ? (
-                              <img
-                                src={getChampionImageUrl(champion.name)}
-                                alt={rec.champion_name}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  console.log('Image failed to load for:', champion.name, getChampionImageUrl(champion.name));
-                                  e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjMzc0MTUxIi8+Cjx0ZXh0IHg9IjIwIiB5PSIyNCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOUI5QjlCIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4/CjwvdGV4dD4KPC9zdmc+';
-                                }}
-                              />
-                            ) : (
-                              <div className="w-full h-full bg-gray-700 flex items-center justify-center text-gray-500 text-xs">
-                                ?
-                              </div>
-                            )}
+                          <div className="flex-shrink-0 w-8 h-8 rounded-lg overflow-hidden border border-gray-600 group-hover:border-gold-500 transition">
+                            <img
+                              src={getChampionImageUrl(champion?.name || rec.champion_name)}
+                              alt={rec.champion_name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                console.log('Image failed for:', rec.champion_name, 'Champion found:', !!champion);
+                                e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSIjMzc0MTUxIi8+Cjx0ZXh0IHg9IjE2IiB5PSIyMCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjOUI5QjlCIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4/CjwvdGV4dD4KPC9zdmc+';
+                              }}
+                            />
                           </div>
 
                           {/* Champion Info */}
                           <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-bold text-white group-hover:text-gold-500 transition truncate">
+                            <h4 className="text-xs font-bold text-white group-hover:text-gold-500 transition truncate">
                               {rec.champion_name}
                             </h4>
                             
                             {/* Value Bar */}
                             <div className="flex items-center gap-1 mt-1">
-                              <div className="flex-1 bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                              <div className="flex-1 bg-gray-700 rounded-full h-1 overflow-hidden">
                                 <div
                                   className={`h-full ${currentDraftAction.action === 'ban' ? 'bg-red-500' : 'bg-green-500'} transition-all duration-300`}
                                   style={{ width: `${barWidth}%` }}
                                 />
                               </div>
-                              <span className={`text-xs font-bold ${currentDraftAction.action === 'ban' ? 'text-red-400' : 'text-green-400'} min-w-[40px] text-right`}>
+                              <span className={`text-xs font-bold ${currentDraftAction.action === 'ban' ? 'text-red-400' : 'text-green-400'} min-w-[35px] text-right`}>
                                 {currentDraftAction.action === 'ban' ? '' : '+'}{valuePercent.toFixed(1)}%
                               </span>
                             </div>
@@ -664,8 +718,17 @@ export default function DraftPage() {
                 </div>
               )}
             </div>
+          )}
+        </div>
+
+
+        {/* Prediction Results */}
+        {prediction && (
+          <div className="mb-6">
+            <PredictionCard prediction={prediction} />
           </div>
         )}
+
 
         {/* Champion Picker */}
         <ChampionPicker
@@ -679,23 +742,23 @@ export default function DraftPage() {
           currentDraftAction={currentDraftAction}
         />
 
-        {/* Recommendation Modal - Hidden since we show inline now */}
-        {false && showRecommendations && currentDraftAction && (
-          <RecommendationCard
-            recommendations={recommendations?.recommendations || []}
-            mode={currentDraftAction.action === 'ban' ? 'ban' : 'pick'}
-            role={currentDraftAction.role}
-            side={currentDraftAction.team}
-            champions={champions}
-            loading={recommendationLoading}
-            error={recommendationError || undefined}
-            onSelect={handleSelectRecommendation}
-            onClose={() => {
-              setShowRecommendations(false);
-              setRecommendations(null);
-              setRecommendationError(null);
-            }}
-          />
+
+        {/* Post-Draft Analysis */}
+        {showAnalysis && analysis && (
+          <div className="mt-8">
+            <AnalysisPanel 
+              analysis={analysis}
+              onClose={() => setShowAnalysis(false)}
+            />
+          </div>
+        )}
+
+        {/* Analysis Loading State */}
+        {analyzing && (
+          <div className="mt-8 bg-gray-800 border border-gray-700 rounded-lg p-8 text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-gold-500 mx-auto mb-4" />
+            <p className="text-gray-400">Analyzing draft composition...</p>
+          </div>
         )}
       </div>
     </div>

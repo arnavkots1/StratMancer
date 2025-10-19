@@ -49,11 +49,14 @@ export interface PredictionRequest {
 }
 
 export interface PredictionResponse {
-  win_probability: number;
+  blue_win_prob: number;
+  red_win_prob: number;
   confidence: number;
-  explanations: Explanation[];
+  calibrated: boolean;
+  explanations: string[];
   model_version: string;
-  timestamp: string;
+  elo_group: string;
+  patch: string;
 }
 
 export interface Explanation {

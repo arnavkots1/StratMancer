@@ -39,7 +39,7 @@ class RecommenderService:
         # For empty drafts, add timestamp to avoid persistent caching
         is_empty_draft = all(
             draft['blue'].get(role) is None and draft['red'].get(role) is None
-            for role in ['top', 'jungle', 'mid', 'adc', 'support']
+            for role in ['top', 'jgl', 'mid', 'adc', 'sup']
         )
         
         if is_empty_draft:
@@ -69,14 +69,18 @@ class RecommenderService:
         banned = set()
         
         # Blue team picks
-        for role in ['top', 'jungle', 'mid', 'adc', 'support']:
-            if draft['blue'].get(role):
-                picked.add(draft['blue'][role])
+        for role in ['top', 'jgl', 'mid', 'adc', 'sup']:
+            champ_id = draft['blue'].get(role)
+            # Check for valid champion ID (not None, not -1, not 0, not undefined)
+            if champ_id and champ_id != -1:
+                picked.add(champ_id)
         
         # Red team picks
-        for role in ['top', 'jungle', 'mid', 'adc', 'support']:
-            if draft['red'].get(role):
-                picked.add(draft['red'][role])
+        for role in ['top', 'jgl', 'mid', 'adc', 'sup']:
+            champ_id = draft['red'].get(role)
+            # Check for valid champion ID (not None, not -1, not 0, not undefined)
+            if champ_id and champ_id != -1:
+                picked.add(champ_id)
         
         # Bans
         banned.update(draft['blue'].get('bans', []))
@@ -84,6 +88,12 @@ class RecommenderService:
         
         # Available champions
         available = all_champs - picked - banned
+        
+        # Debug logging
+        logger.debug(f"Picked champions: {sorted(list(picked))}")
+        logger.debug(f"Banned champions: {sorted(list(banned))}")
+        logger.debug(f"Available champions: {len(available)} total")
+        
         return sorted(list(available))
     
     def _get_baseline_winrate(
@@ -93,30 +103,13 @@ class RecommenderService:
         draft: Dict
     ) -> float:
         """Get current draft win probability (blue team perspective)"""
-        # Extract current picks (may be incomplete)
-        blue_picks = []
-        red_picks = []
-        
-        for role in ['top', 'jungle', 'mid', 'adc', 'support']:
-            blue_picks.append(draft['blue'].get(role, -1))
-            red_picks.append(draft['red'].get(role, -1))
-        
-        # Count how many picks we have
-        blue_count = sum(1 for p in blue_picks if p != -1)
-        red_count = sum(1 for p in red_picks if p != -1)
-        
-        # If any team is incomplete, return 50% baseline
-        if blue_count < 5 or red_count < 5:
-            return 0.5
-        
         try:
-            result = inference_service.predict_draft(
+            # Use the role-aware prediction method for partial drafts
+            result = inference_service.predict_draft_with_roles(
                 elo=elo,
                 patch=patch,
-                blue_picks=blue_picks,
-                red_picks=red_picks,
-                blue_bans=draft['blue'].get('bans', []),
-                red_bans=draft['red'].get('bans', [])
+                blue_draft=draft['blue'],
+                red_draft=draft['red']
             )
             return result['blue_win_prob']
         except Exception as e:
@@ -142,26 +135,13 @@ class RecommenderService:
         # Add champion to specified role
         test_draft[side][role] = champion_id
         
-        # Extract picks
-        blue_picks = []
-        red_picks = []
-        
-        for r in ['top', 'jungle', 'mid', 'adc', 'support']:
-            blue_picks.append(test_draft['blue'].get(r, -1))
-            red_picks.append(test_draft['red'].get(r, -1))
-        
-        # If still incomplete, can't predict
-        if -1 in blue_picks or -1 in red_picks:
-            return 0.5
-        
         try:
-            result = inference_service.predict_draft(
+            # Use the new role-aware prediction method
+            result = inference_service.predict_draft_with_roles(
                 elo=elo,
                 patch=patch,
-                blue_picks=blue_picks,
-                red_picks=red_picks,
-                blue_bans=draft['blue'].get('bans', []),
-                red_bans=draft['red'].get('bans', [])
+                blue_draft=test_draft['blue'],
+                red_draft=test_draft['red']
             )
             # print(f"DEBUG: predict_draft result for champ {champion_id}: {result}")
             return result['blue_win_prob']
@@ -289,7 +269,7 @@ class RecommenderService:
             elo: ELO group ('low', 'mid', 'high')
             side: Team side ('blue' or 'red')
             draft: Current draft state with blue/red picks and bans
-            role: Role to fill ('top', 'jungle', 'mid', 'adc', 'support')
+            role: Role to fill ('top', 'jgl', 'mid', 'adc', 'sup')
             patch: Patch version
             top_n: Number of recommendations to return
         
@@ -309,6 +289,16 @@ class RecommenderService:
         available = self._get_available_champions(draft)
         logger.info(f"Found {len(available)} available champions")
         
+        # Debug: Log current draft state
+        logger.debug(f"Current draft state: blue={draft['blue']}, red={draft['red']}")
+        
+        # Debug: Check if Annie (champion ID 1) is in available list
+        annie_id = 1
+        if annie_id in available:
+            logger.warning(f"Annie (ID {annie_id}) is still available despite being picked!")
+        else:
+            logger.debug(f"Annie (ID {annie_id}) correctly excluded from available champions")
+        
         if len(available) == 0:
             return {
                 'side': side,
@@ -324,7 +314,7 @@ class RecommenderService:
         # For empty drafts, use champion popularity/strength as proxy
         is_empty_draft = all(
             draft['blue'].get(role) is None and draft['red'].get(role) is None
-            for role in ['top', 'jungle', 'mid', 'adc', 'support']
+            for role in ['top', 'jgl', 'mid', 'adc', 'sup']
         )
         
         # Calculate win gain for each available champion
@@ -354,6 +344,11 @@ class RecommenderService:
                         win_gain = new_prob - baseline
                     else:
                         win_gain = (1 - new_prob) - (1 - baseline)
+                    
+                    # Debug logging for first few champions
+                    if len(recommendations) < 3:
+                        champ_name = self._get_champion_name(champ_id)
+                        logger.info(f"Champion {champ_name} (ID {champ_id}): baseline={baseline:.4f}, new_prob={new_prob:.4f}, win_gain={win_gain:.4f}")
                     
                     # Apply ELO skill cap adjustment
                     skill_cap = self._get_champion_skill_cap(champ_id)
@@ -417,7 +412,7 @@ class RecommenderService:
         # Check if this is an empty draft
         is_empty_draft = all(
             draft['blue'].get(role) is None and draft['red'].get(role) is None
-            for role in ['top', 'jungle', 'mid', 'adc', 'support']
+            for role in ['top', 'jgl', 'mid', 'adc', 'sup']
         )
         
         # TEMPORARILY DISABLE ALL CACHING FOR DEBUGGING
@@ -444,7 +439,7 @@ class RecommenderService:
         enemy_side = 'red' if side == 'blue' else 'blue'
         test_role = None
         
-        for role in ['top', 'jungle', 'mid', 'adc', 'support']:
+        for role in ['top', 'jgl', 'mid', 'adc', 'sup']:
             if not draft[enemy_side].get(role):
                 test_role = role
                 break

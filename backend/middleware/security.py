@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 VALID_CHAMPION_IDS: Set[int] = set()
 
 # Required role fields
-REQUIRED_ROLES = {"top", "jungle", "mid", "adc", "support"}
+REQUIRED_ROLES = {"top", "jgl", "mid", "adc", "sup"}
 
 
 def load_valid_champion_ids():
@@ -65,6 +65,10 @@ def validate_champion_id(champion_id: Any) -> bool:
     if not isinstance(champion_id, int):
         return False
     
+    # Allow -1 as placeholder for empty picks
+    if champion_id == -1:
+        return True
+    
     return champion_id in VALID_CHAMPION_IDS
 
 
@@ -97,11 +101,40 @@ def validate_draft_request(data: Dict[str, Any]) -> None:
         )
 
 
+def validate_recommendation_request(data: Dict[str, Any]) -> None:
+    """Validate recommendation request data (lighter validation)"""
+    errors = []
+    
+    # Check required fields
+    if "blue" not in data:
+        errors.append("Missing 'blue' team data")
+    if "red" not in data:
+        errors.append("Missing 'red' team data")
+    
+    if "blue" in data and "red" in data:
+        # Validate blue team (only check bans and existing picks)
+        blue_errors = validate_team_data_light(data["blue"], "blue")
+        errors.extend(blue_errors)
+        
+        # Validate red team (only check bans and existing picks)
+        red_errors = validate_team_data_light(data["red"], "red")
+        errors.extend(red_errors)
+    
+    if errors:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "message": "Validation failed",
+                "errors": errors
+            }
+        )
+
+
 def validate_team_data(team_data: Dict[str, Any], team_name: str) -> list:
     """Validate team data"""
     errors = []
     
-    # Check required roles
+    # Check required roles (allow null values)
     for role in REQUIRED_ROLES:
         if role not in team_data:
             errors.append(f"Missing '{role}' role in {team_name} team")
@@ -120,6 +153,35 @@ def validate_team_data(team_data: Dict[str, Any], team_name: str) -> list:
             # Validate ban champion IDs
             for i, ban_id in enumerate(team_data["bans"]):
                 if not validate_champion_id(ban_id):
+                    errors.append(f"Invalid ban champion ID {ban_id} at position {i} in {team_name} team")
+    
+    return errors
+
+
+def validate_team_data_light(team_data: Dict[str, Any], team_name: str) -> list:
+    """Validate team data for recommendations (lighter validation)"""
+    errors = []
+    
+    # Only validate existing role picks (don't require all roles)
+    for role in REQUIRED_ROLES:
+        if role in team_data:
+            role_value = team_data[role]
+            # Allow None, -1, or valid champion IDs
+            if role_value is not None and role_value != -1 and not validate_champion_id(role_value):
+                errors.append(f"Invalid champion ID {role_value} for {role} in {team_name} team")
+    
+    # Validate bans
+    if "bans" in team_data:
+        if not isinstance(team_data["bans"], list):
+            errors.append(f"Bans must be a list in {team_name} team")
+        else:
+            # Deduplicate bans
+            original_bans = team_data["bans"]
+            team_data["bans"] = list(set(original_bans))
+            
+            # Validate ban champion IDs (exclude -1 placeholders)
+            for i, ban_id in enumerate(team_data["bans"]):
+                if ban_id != -1 and not validate_champion_id(ban_id):
                     errors.append(f"Invalid ban champion ID {ban_id} at position {i} in {team_name} team")
     
     return errors
@@ -166,7 +228,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             
             # Validate specific endpoints
             if request.url.path in ["/predict-draft", "/recommend/pick", "/recommend/ban"]:
-                await self._validate_prediction_request(request)
+                await self._validate_prediction_request(request, request.url.path)
             
             # Process request with timeout
             response = await self._process_with_timeout(request, call_next)
@@ -194,7 +256,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
                 content={"detail": "Internal server error"}
             )
     
-    async def _validate_prediction_request(self, request: Request):
+    async def _validate_prediction_request(self, request: Request, path: str):
         """Validate prediction request data"""
         if request.method not in ["POST", "PUT", "PATCH"]:
             return
@@ -217,8 +279,13 @@ class SecurityMiddleware(BaseHTTPMiddleware):
                     detail=f"Invalid JSON: {str(e)}"
                 )
             
-            # Validate draft request
-            validate_draft_request(data)
+            # Validate based on endpoint type
+            if path == "/predict-draft":
+                # Full validation for prediction endpoint
+                validate_draft_request(data)
+            elif path in ["/recommend/pick", "/recommend/ban"]:
+                # Lighter validation for recommendation endpoints
+                validate_recommendation_request(data)
             
         except HTTPException:
             raise

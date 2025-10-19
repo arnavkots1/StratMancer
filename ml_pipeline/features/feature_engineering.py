@@ -37,25 +37,42 @@ def build_role_onehots(match: Dict, feature_map: Dict) -> np.ndarray:
     tags = feature_map['tags']
     id_to_index = feature_map.get('id_to_index', {})
     
-    # Process blue team
-    for champ_id in match['blue_picks']:
-        champ_str = str(champ_id)
-        if champ_str in tags and champ_str in id_to_index:
-            role = tags[champ_str]['role']
-            if role in roles:
-                role_idx = roles.index(role)
-                champ_idx = id_to_index[champ_str]  # Use mapped index
-                role_matrix[0, role_idx, champ_idx] = 1.0
-    
-    # Process red team
-    for champ_id in match['red_picks']:
-        champ_str = str(champ_id)
-        if champ_str in tags and champ_str in id_to_index:
-            role = tags[champ_str]['role']
-            if role in roles:
-                role_idx = roles.index(role)
-                champ_idx = id_to_index[champ_str]  # Use mapped index
-                role_matrix[1, role_idx, champ_idx] = 1.0
+    # Check if this is a positional pick array (from API prediction)
+    # If blue_picks is a list of exactly 5 elements, treat as positional
+    if (isinstance(match.get('blue_picks'), list) and 
+        len(match['blue_picks']) == 5 and
+        isinstance(match.get('red_picks'), list) and 
+        len(match['red_picks']) == 5):
+        
+        # Process as positional arrays: [top, jgl, mid, adc, sup]
+        for team_idx, team_picks in enumerate([match['blue_picks'], match['red_picks']]):
+            for role_idx, champ_id in enumerate(team_picks):
+                if champ_id != -1:  # Skip empty positions
+                    champ_str = str(champ_id)
+                    if champ_str in id_to_index:
+                        champ_idx = id_to_index[champ_str]
+                        role_matrix[team_idx, role_idx, champ_idx] = 1.0
+    else:
+        # Legacy behavior: look up champion roles from feature map
+        # Process blue team
+        for champ_id in match['blue_picks']:
+            champ_str = str(champ_id)
+            if champ_str in tags and champ_str in id_to_index:
+                role = tags[champ_str]['role']
+                if role in roles:
+                    role_idx = roles.index(role)
+                    champ_idx = id_to_index[champ_str]  # Use mapped index
+                    role_matrix[0, role_idx, champ_idx] = 1.0
+        
+        # Process red team
+        for champ_id in match['red_picks']:
+            champ_str = str(champ_id)
+            if champ_str in tags and champ_str in id_to_index:
+                role = tags[champ_str]['role']
+                if role in roles:
+                    role_idx = roles.index(role)
+                    champ_idx = id_to_index[champ_str]  # Use mapped index
+                    role_matrix[1, role_idx, champ_idx] = 1.0
     
     # Flatten: [blue_top_champs, blue_jgl_champs, ..., red_top_champs, ...]
     return role_matrix.flatten()
