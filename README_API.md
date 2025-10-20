@@ -112,6 +112,9 @@ USE_REDIS=false
 | `/predict-draft` | POST | Yes | Predict draft outcome |
 | `/models/registry` | GET | Yes | Get model metadata |
 | `/team-optimizer/player/{puuid}` | GET | Yes | Get player metrics |
+| `/meta/{elo}/{patch}` | GET | No | Get meta snapshot for a specific patch |
+| `/meta/{elo}/latest` | GET | No | Get latest meta snapshot |
+| `/meta/trends/{elo}` | GET | No | Get patch-over-patch risers and fallers |
 
 ---
 
@@ -121,6 +124,7 @@ USE_REDIS=false
 - ✅ **Calibrated Predictions** - Isotonic regression for accurate probabilities
 - ✅ **Smart Caching** - 60-second cache with Redis/memory fallback
 - ✅ **Rate Limiting** - 60 requests/minute per IP
+- ✅ **Meta Tracker** - Patch-aware pick/win/ban rates with Redis caching
 - ✅ **CORS Enabled** - Ready for frontend integration
 - ✅ **OpenAPI Docs** - Interactive API documentation
 - ✅ **Error Handling** - Comprehensive error responses

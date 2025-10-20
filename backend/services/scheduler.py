@@ -289,6 +289,29 @@ def refresh_patch_meta():
         # Don't re-raise
 
 
+def refresh_meta_snapshots():
+    """
+    Job 4: Rebuild meta snapshots for all ELO groups.
+    Runs daily.
+    """
+    start_time = time.time()
+    logger.info("🔄 Starting meta snapshot refresh...")
+
+    try:
+        from backend.services.meta_tracker import meta_tracker, MetaComputationError
+
+        results = meta_tracker.refresh_all()
+        total = sum(1 for value in results.values() if value)
+        duration = time.time() - start_time
+        logger.info(f"✅ Meta snapshots refreshed successfully in {duration:.2f}s ({total} ELO groups)")
+    except MetaComputationError as exc:
+        duration = time.time() - start_time
+        logger.warning(f"⚠️ Meta snapshot refresh skipped after {duration:.2f}s: {exc}")
+    except Exception as exc:
+        duration = time.time() - start_time
+        logger.error(f"❌ Meta snapshot refresh failed after {duration:.2f}s: {exc}", exc_info=True)
+
+
 # ============================================================================
 # Scheduler Initialization
 # ============================================================================
@@ -332,6 +355,16 @@ def init_scheduler() -> SchedulerService:
         misfire_grace_time=3600  # 1 hour grace period
     )
     logger.info("  ✓ Scheduled: Refresh Patch Metadata (daily at 3:00 AM)")
+
+    # Job 4: Refresh meta snapshots (daily at 2 AM)
+    scheduler.add_job(
+        func=refresh_meta_snapshots,
+        trigger=CronTrigger(hour=2, minute=0),
+        job_id='refresh_meta_snapshots',
+        name='Refresh Meta Snapshots',
+        misfire_grace_time=3600
+    )
+    logger.info("  ✓ Scheduled: Refresh Meta Snapshots (daily at 2:00 AM)")
     
     logger.info("=" * 70)
     

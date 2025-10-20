@@ -82,3 +82,44 @@ export interface APIError {
   status?: number;
 }
 
+export interface MetaChampion {
+  champion_id: number;
+  champion_name: string;
+  pick_rate: number;
+  win_rate: number;
+  ban_rate: number;
+  delta_win_rate: number;
+  performance_index: number;
+  games_played: number;
+  wins: number;
+  bans: number;
+}
+
+export interface MetaSnapshot {
+  elo: Elo | string;
+  patch: string;
+  last_updated: string;
+  previous_patch?: string | null;
+  total_matches: number;
+  champion_count: number;
+  available_patches: string[];
+  champions: MetaChampion[];
+}
+
+export interface MetaTrendEntry {
+  champion_id: number;
+  champion_name: string;
+  delta_win_rate: number;
+  current_win_rate: number;
+  previous_win_rate?: number | null;
+  performance_index: number;
+}
+
+export interface MetaTrends {
+  elo: Elo | string;
+  latest_patch?: string | null;
+  previous_patch?: string | null;
+  generated_at: string;
+  risers: MetaTrendEntry[];
+  fallers: MetaTrendEntry[];
+}

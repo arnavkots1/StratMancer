@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { Shield, Github } from 'lucide-react'
+import { Shield, Github, TrendingUp } from 'lucide-react'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -42,6 +42,13 @@ export default function RootLayout({
                     className="text-gray-300 hover:text-gold-500 transition-colors"
                   >
                     Draft Analyzer
+                  </a>
+                  <a
+                    href="/meta"
+                    className="text-gray-300 hover:text-gold-500 transition-colors flex items-center gap-2"
+                  >
+                    <TrendingUp className="w-4 h-4" />
+                    Meta Tracker
                   </a>
                   <a
                     href="https://github.com/yourusername/stratmancer"
