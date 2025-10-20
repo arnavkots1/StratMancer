@@ -133,12 +133,9 @@ export default function DraftPage() {
       const featureMap: FeatureMap = await api.getFeatureMap();
       
       // Convert feature map to champion array
-      const champArray: Champion[] = Object.entries(featureMap.champ_index).map(([name, index]) => {
-        // Find champion ID from id_to_index
-        const champId = Object.entries(featureMap.id_to_index).find(
-          ([_, idx]) => idx === index
-        )?.[0] || '0';
-        
+      const champArray: Champion[] = Object.entries(featureMap.champ_index).map(([name, championId]) => {
+        // Values in champ_index are the actual Riot champion IDs
+        const champId = String(championId);
         const tags = featureMap.tags[champId] || {};
         
         // Convert role string to array and normalize to uppercase
@@ -152,7 +149,7 @@ export default function DraftPage() {
         }
         
         return {
-          id: champId,
+          id: champId, // This is the actual champion ID (e.g., "67" for Vayne)
           name: name,
           key: champId,
           roles: roleArray.map((r: string) => r.toUpperCase()) as any,
@@ -274,6 +271,19 @@ export default function DraftPage() {
         patch: draftState.patch || '15.20',
         top_n: 5,
       };
+
+      // Debug logging
+      console.log('Frontend ban data being sent:');
+      console.log('Blue bans:', draftState.blueBans.map(c => `${c.name} (ID: ${c.id})`));
+      console.log('Red bans:', draftState.redBans.map(c => `${c.name} (ID: ${c.id})`));
+      console.log('Blue ban IDs:', draftForAPI.blue.bans);
+      console.log('Red ban IDs:', draftForAPI.red.bans);
+      
+      // Check specifically for Vayne
+      const vayneInBlue = draftState.blueBans.find(c => c.name === 'Vayne');
+      const vayneInRed = draftState.redBans.find(c => c.name === 'Vayne');
+      if (vayneInBlue) console.log('Vayne in blue bans:', vayneInBlue.id);
+      if (vayneInRed) console.log('Vayne in red bans:', vayneInRed.id);
 
       let result;
       if (action === 'ban') {
@@ -641,8 +651,13 @@ export default function DraftPage() {
                       Object.values(draftState.blue).some((c: any) => c && parseInt(c.id) === rec.champion_id) ||
                       Object.values(draftState.red).some((c: any) => c && parseInt(c.id) === rec.champion_id);
                     
-                    // Skip this recommendation if champion is already picked
-                    if (isAlreadyPicked) {
+                    // Check if champion is banned (client-side verification)
+                    const isBanned = 
+                      draftState.blueBans.some((c: any) => parseInt(c.id) === rec.champion_id) ||
+                      draftState.redBans.some((c: any) => parseInt(c.id) === rec.champion_id);
+                    
+                    // Skip this recommendation if champion is already picked or banned
+                    if (isAlreadyPicked || isBanned) {
                       return null;
                     }
                     const value = currentDraftAction.action === 'ban' ? rec.threat_level : rec.win_gain;
@@ -764,4 +779,3 @@ export default function DraftPage() {
     </div>
   );
 }
-

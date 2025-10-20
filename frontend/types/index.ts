@@ -72,7 +72,7 @@ export interface FeatureMap {
     num_champ: number;
     created_at: string;
   };
-  champ_index: Record<string, number>; // name -> index
+  champ_index: Record<string, number>; // name -> championId
   id_to_index: Record<string, number>; // championId -> index
   tags: Record<string, Champion['tags']>; // championId -> tags
 }

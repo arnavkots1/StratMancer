@@ -13,7 +13,19 @@ class DraftAnalyzer:
     """Provides comprehensive post-draft analysis"""
     
     def __init__(self):
-        self.feature_map = inference_service.feature_map
+        # Lazy reference; inference_service initializes feature map on demand
+        self.feature_map = None
+
+    def _ensure_feature_map(self) -> None:
+        """Ensure feature map is loaded before accessing it."""
+        if self.feature_map is not None:
+            return
+        # Initialize inference service (lazy) which loads feature map
+        try:
+            inference_service.initialize()
+            self.feature_map = inference_service.feature_map
+        except Exception:
+            self.feature_map = None
         
     def analyze_draft(
         self,
@@ -39,6 +51,11 @@ class DraftAnalyzer:
             Comprehensive analysis including matchups, win conditions, threats
         """
         try:
+            # Ensure resources are available
+            self._ensure_feature_map()
+            if not self.feature_map:
+                raise RuntimeError("Feature map not loaded")
+            
             # Get champion data
             blue_picks = self._get_team_picks(blue_team)
             red_picks = self._get_team_picks(red_team)
@@ -120,6 +137,11 @@ class DraftAnalyzer:
     
     def _get_champion_data(self, champ_id: str) -> Optional[Dict[str, Any]]:
         """Get enriched champion data from feature map"""
+        # Ensure feature map is available
+        if self.feature_map is None:
+            self._ensure_feature_map()
+        if not self.feature_map:
+            return None
         champ_data = self.feature_map.get('champions', {}).get(champ_id)
         if not champ_data:
             return None

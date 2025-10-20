@@ -8,15 +8,41 @@ interface PredictionCardProps {
 }
 
 export default function PredictionCard({ prediction }: PredictionCardProps) {
-  const { win_probability, confidence, explanations, model_version, timestamp } = prediction;
+  const {
+    blue_win_prob,
+    red_win_prob,
+    confidence,
+    explanations,
+    model_version,
+    // backend may not return timestamp; use now if missing
+  } = prediction as any;
 
-  // Convert to percentages
-  const blueWinRate = Math.round(win_probability * 100);
-  const redWinRate = 100 - blueWinRate;
-  const confidencePercent = Math.round(confidence * 100);
+  // Convert to percentages with guards
+  const blueWinRate = Number.isFinite(blue_win_prob)
+    ? Math.round((blue_win_prob as number) * 100)
+    : 0;
+  const redWinRate = Number.isFinite(red_win_prob)
+    ? Math.round((red_win_prob as number) * 100)
+    : 100 - blueWinRate;
+  const confidencePercent = Number.isFinite(confidence)
+    ? Math.round((confidence as number) * 100)
+    : 0;
+
+  // Normalize explanations from backend (may be strings)
+  const normalizedExplanations = Array.isArray(explanations)
+    ? (explanations as any[]).map((e: any) =>
+        typeof e === 'string'
+          ? { factor: e, impact: 0, description: e }
+          : {
+              factor: e.factor ?? 'Factor',
+              impact: Number.isFinite(e.impact) ? e.impact : 0,
+              description: e.description ?? e.factor ?? '—',
+            }
+      )
+    : [];
 
   // Sort explanations by impact
-  const sortedExplanations = [...explanations].sort((a, b) => 
+  const sortedExplanations = [...normalizedExplanations].sort((a, b) =>
     Math.abs(b.impact) - Math.abs(a.impact)
   );
 
@@ -142,9 +168,7 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
       <div className="pt-6 border-t border-gray-800">
         <div className="flex items-center justify-between text-xs text-gray-500">
           <span>Model: {model_version}</span>
-          <span>
-            Predicted: {new Date(timestamp).toLocaleTimeString()}
-          </span>
+          <span>Predicted: {new Date().toLocaleTimeString()}</span>
         </div>
       </div>
     </div>

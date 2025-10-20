@@ -82,17 +82,55 @@ class RecommenderService:
             if champ_id and champ_id != -1:
                 picked.add(champ_id)
         
-        # Bans
-        banned.update(draft['blue'].get('bans', []))
-        banned.update(draft['red'].get('bans', []))
+        # Bans - ensure they are integers
+        blue_bans = draft['blue'].get('bans', [])
+        red_bans = draft['red'].get('bans', [])
+        
+        logger.info(f"Raw blue bans: {blue_bans}")
+        logger.info(f"Raw red bans: {red_bans}")
+        
+        # Convert to integers and filter out None/invalid values
+        for ban_id in blue_bans:
+            if ban_id is not None and ban_id != -1:
+                try:
+                    banned.add(int(ban_id))
+                except (ValueError, TypeError):
+                    logger.warning(f"Invalid ban ID: {ban_id}")
+        
+        for ban_id in red_bans:
+            if ban_id is not None and ban_id != -1:
+                try:
+                    banned.add(int(ban_id))
+                except (ValueError, TypeError):
+                    logger.warning(f"Invalid ban ID: {ban_id}")
         
         # Available champions
         available = all_champs - picked - banned
         
         # Debug logging
-        logger.debug(f"Picked champions: {sorted(list(picked))}")
-        logger.debug(f"Banned champions: {sorted(list(banned))}")
-        logger.debug(f"Available champions: {len(available)} total")
+        logger.info(f"Picked champions: {sorted(list(picked))}")
+        logger.info(f"Banned champions: {sorted(list(banned))}")
+        logger.info(f"Available champions: {len(available)} total")
+        
+        # Check for any champions that appear in both banned and available (debugging)
+        overlap = banned.intersection(available)
+        if overlap:
+            logger.warning(f"Champions incorrectly in both banned and available: {sorted(list(overlap))}")
+        else:
+            logger.info("No overlap between banned and available champions")
+        
+        # Check specifically for Vayne to catch mapping issues between front and backend
+        vayne_id = feature_map.get('champ_index', {}).get('Vayne')
+        if vayne_id is not None:
+            if vayne_id in banned:
+                logger.info(f"Vayne (ID {vayne_id}) is correctly in banned list")
+            else:
+                logger.info(f"Vayne (ID {vayne_id}) is not in banned list (expected if not banned)")
+            
+            if vayne_id in available:
+                logger.info(f"Vayne (ID {vayne_id}) is available for selection")
+            else:
+                logger.info(f"Vayne (ID {vayne_id}) is not available (banned or picked)")
         
         return sorted(list(available))
     
@@ -317,10 +355,34 @@ class RecommenderService:
             for role in ['top', 'jgl', 'mid', 'adc', 'sup']
         )
         
+        # Build exclusion set: all picked champs and both teams' bans
+        excluded: set[int] = set()
+        for r in ['top', 'jgl', 'mid', 'adc', 'sup']:
+            v = draft['blue'].get(r)
+            if v is not None and v != -1:
+                excluded.add(int(v))
+            v = draft['red'].get(r)
+            if v is not None and v != -1:
+                excluded.add(int(v))
+        for b in (draft['blue'].get('bans', []) or []):
+            try:
+                if b is not None and b != -1:
+                    excluded.add(int(b))
+            except Exception:
+                pass
+        for b in (draft['red'].get('bans', []) or []):
+            try:
+                if b is not None and b != -1:
+                    excluded.add(int(b))
+            except Exception:
+                pass
+
         # Calculate win gain for each available champion
         recommendations = []
         
         for champ_id in available[:100]:  # Limit to 100 for performance
+            if int(champ_id) in excluded:
+                continue
             try:
                 if is_empty_draft:
                     # For empty drafts, use champion strength as proxy
@@ -455,10 +517,34 @@ class RecommenderService:
         
         # logger.info(f"Empty draft detected: {is_empty_draft}")
         
+        # Build exclusion set: all picked champs and both teams' bans
+        excluded: set[int] = set()
+        for r in ['top', 'jgl', 'mid', 'adc', 'sup']:
+            v = draft['blue'].get(r)
+            if v is not None and v != -1:
+                excluded.add(int(v))
+            v = draft['red'].get(r)
+            if v is not None and v != -1:
+                excluded.add(int(v))
+        for b in (draft['blue'].get('bans', []) or []):
+            try:
+                if b is not None and b != -1:
+                    excluded.add(int(b))
+            except Exception:
+                pass
+        for b in (draft['red'].get('bans', []) or []):
+            try:
+                if b is not None and b != -1:
+                    excluded.add(int(b))
+            except Exception:
+                pass
+
         # Calculate threat level for each champion
         ban_recommendations = []
         
         for champ_id in available[:80]:  # Limit for performance
+            if int(champ_id) in excluded:
+                continue
             try:
                 if is_empty_draft:
                     # For empty drafts, use champion strength as proxy for threat
@@ -532,5 +618,4 @@ class RecommenderService:
 
 # Global recommender service
 recommender_service = RecommenderService()
-
 

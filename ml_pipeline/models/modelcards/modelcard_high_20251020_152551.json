@@ -1,0 +1,14 @@
+{
+  "elo": "high",
+  "model_type": "xgb",
+  "timestamp": "2025-10-20T15:25:51.087222",
+  "features": 3309,
+  "train_size": 2562,
+  "val_size": 321,
+  "test_size": 321,
+  "calibrated": true,
+  "source_patch": "15.20",
+  "feature_version": "v1",
+  "model_file": "draft_high_xgb_20251020_152551.pkl",
+  "calibrator_file": "calibrator_high_20251020_152551.pkl"
+}
