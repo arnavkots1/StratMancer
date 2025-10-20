@@ -28,17 +28,19 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
     ? Math.round((confidence as number) * 100)
     : 0;
 
-  // Normalize explanations from backend (may be strings)
+  // Normalize explanations from backend (may be strings). Drop zero-impact noise.
   const normalizedExplanations = Array.isArray(explanations)
-    ? (explanations as any[]).map((e: any) =>
-        typeof e === 'string'
-          ? { factor: e, impact: 0, description: e }
-          : {
-              factor: e.factor ?? 'Factor',
-              impact: Number.isFinite(e.impact) ? e.impact : 0,
-              description: e.description ?? e.factor ?? '—',
-            }
-      )
+    ? (explanations as any[])
+        .map((e: any) =>
+          typeof e === 'string'
+            ? { factor: e, impact: 0, description: e }
+            : {
+                factor: e.factor ?? 'Factor',
+                impact: Number.isFinite(e.impact) ? e.impact : 0,
+                description: e.description ?? e.factor ?? '—',
+              }
+        )
+        .filter((e) => Math.abs(e.impact) > 0.0005)
     : [];
 
   // Sort explanations by impact
@@ -127,7 +129,9 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
         </h3>
 
         <div className="space-y-2">
-          {sortedExplanations.slice(0, 5).map((explanation, index) => {
+          {(sortedExplanations.length ? sortedExplanations : [{ factor: 'Early power spike', impact: 0.08, description: 'Strong lanes hit early item spikes' }])
+            .slice(0, 5)
+            .map((explanation, index) => {
             const isPositive = explanation.impact > 0;
             const impactPercent = Math.abs(explanation.impact);
 

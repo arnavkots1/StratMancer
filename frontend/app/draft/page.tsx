@@ -61,6 +61,8 @@ export default function DraftPage() {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [analysis, setAnalysis] = useState<any>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  // Require explicit start to begin any draft interactions
+  const [draftStarted, setDraftStarted] = useState<boolean>(false);
 
   // Define the draft sequence for Gold rank (with bans)
   // Format: { team, action, role }
@@ -169,6 +171,10 @@ export default function DraftPage() {
   };
 
   const handlePredictDraft = async () => {
+    if (!draftStarted) {
+      setError('Click "Start Draft" to begin.');
+      return;
+    }
     try {
       setPredicting(true);
       setError(null);
@@ -365,6 +371,11 @@ export default function DraftPage() {
   };
 
   const handleChampionSelect = (champion: Champion) => {
+    if (!draftStarted) {
+      setError('Click "Start Draft" to begin.');
+      setTimeout(() => setError(null), 2000);
+      return;
+    }
     if (!currentDraftAction) {
       setError('Draft is complete! Click Analyze Draft or Reset.');
       setTimeout(() => setError(null), 3000);
@@ -429,6 +440,15 @@ export default function DraftPage() {
               </p>
             </div>
             <div className="flex items-center gap-4">
+              {/* Start Draft */}
+              <button
+                className={`btn ${draftStarted ? 'btn-secondary' : 'btn-primary'}`}
+                onClick={() => setDraftStarted(true)}
+                disabled={draftStarted}
+                title={draftStarted ? 'Draft already started' : 'Start Draft'}
+              >
+                {draftStarted ? 'Draft Started' : 'Start Draft'}
+              </button>
               {/* Timer */}
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-400">Pick Timer:</span>
