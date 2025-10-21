@@ -147,9 +147,10 @@ class RecommenderService:
                 elo=elo,
                 patch=patch,
                 blue_draft=draft['blue'],
-                red_draft=draft['red']
+                red_draft=draft['red'],
+                calibrated_for_ui=False,
             )
-            return result['blue_win_prob']
+            return result.get('blue_win_prob_raw', result['blue_win_prob'])
         except Exception as e:
             logger.warning(f"Failed to get baseline winrate: {e}")
             return 0.5
@@ -179,10 +180,10 @@ class RecommenderService:
                 elo=elo,
                 patch=patch,
                 blue_draft=test_draft['blue'],
-                red_draft=test_draft['red']
+                red_draft=test_draft['red'],
+                calibrated_for_ui=False,
             )
-            # print(f"DEBUG: predict_draft result for champ {champion_id}: {result}")
-            return result['blue_win_prob']
+            return result.get('blue_win_prob_raw', result['blue_win_prob'])
         except Exception as e:
             logger.warning(f"Failed to simulate pick {champion_id}: {e}")
             return 0.5
@@ -618,4 +619,3 @@ class RecommenderService:
 
 # Global recommender service
 recommender_service = RecommenderService()
-

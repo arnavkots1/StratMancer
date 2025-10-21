@@ -39,6 +39,47 @@ except ImportError:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+def expected_calibration_error(y_true: np.ndarray, probs: np.ndarray, n_bins: int = 10) -> float:
+    bins = np.linspace(0.0, 1.0, n_bins + 1)
+    bin_ids = np.digitize(probs, bins) - 1
+    total = len(probs)
+    if total == 0:
+        return 0.0
+
+    ece = 0.0
+    for i in range(n_bins):
+        mask = bin_ids == i
+        if not np.any(mask):
+            continue
+        bin_prob = probs[mask]
+        bin_true = y_true[mask]
+        avg_conf = np.mean(bin_prob)
+        avg_true = np.mean(bin_true)
+        ece += np.abs(avg_conf - avg_true) * (np.sum(mask) / total)
+    return float(ece)
+
+
+def apply_calibrator_scores(calibrator: Any, method: str, probs: np.ndarray) -> np.ndarray:
+    if calibrator is None:
+        return probs
+    if method == 'isotonic' and hasattr(calibrator, 'predict'):
+        return calibrator.predict(probs)
+    if hasattr(calibrator, 'predict_proba'):
+        return calibrator.predict_proba(probs.reshape(-1, 1))[:, 1]
+    if hasattr(calibrator, 'predict'):
+        return calibrator.predict(probs.reshape(-1, 1))
+    return probs
+
+
+def find_previous_modelcard(elo: str, current_timestamp: Optional[str] = None) -> Optional[Path]:
+    cards = sorted(Path("ml_pipeline/models/modelcards").glob(f"modelcard_{elo}_*.json"))
+    if current_timestamp:
+        cards = [c for c in cards if not c.stem.endswith(current_timestamp)]
+    if not cards:
+        return None
+    return cards[-1]
+
 # Set matplotlib style
 plt.style.use('seaborn-v0_8-darkgrid')
 sns.set_palette("husl")
@@ -80,7 +121,8 @@ def compute_metrics(
         'f1_score': f1_score(y_true, y_pred),
         'roc_auc': roc_auc_score(y_true, y_pred_proba),
         'log_loss': log_loss(y_true, y_pred_proba),
-        'brier_score': brier_score_loss(y_true, y_pred_proba)
+        'brier_score': brier_score_loss(y_true, y_pred_proba),
+        'ece': expected_calibration_error(y_true, y_pred_proba),
     }
     
     if y_pred_proba_calibrated is not None:
@@ -89,7 +131,9 @@ def compute_metrics(
             'accuracy_calibrated': accuracy_score(y_true, y_pred_calib),
             'f1_score_calibrated': f1_score(y_true, y_pred_calib),
             'log_loss_calibrated': log_loss(y_true, y_pred_proba_calibrated),
-            'brier_score_calibrated': brier_score_loss(y_true, y_pred_proba_calibrated)
+            'brier_score_calibrated': brier_score_loss(y_true, y_pred_proba_calibrated),
+            'roc_auc_calibrated': roc_auc_score(y_true, y_pred_proba_calibrated),
+            'ece_calibrated': expected_calibration_error(y_true, y_pred_proba_calibrated),
         })
     
     return metrics
@@ -240,6 +284,7 @@ def plot_feature_importance(
 def evaluate_model(
     model: Any,
     calibrator: Any,
+    calibrator_method: str,
     X_test: np.ndarray,
     y_test: np.ndarray,
     model_type: str,
@@ -271,7 +316,7 @@ def evaluate_model(
     
     # Get predictions
     y_pred_proba = predict_proba(model, X_test, model_type)
-    y_pred_proba_calibrated = calibrator.predict(y_pred_proba)
+    y_pred_proba_calibrated = apply_calibrator_scores(calibrator, calibrator_method, y_pred_proba.copy())
     
     # Compute metrics
     metrics = compute_metrics(y_test, y_pred_proba, y_pred_proba_calibrated)
@@ -282,12 +327,15 @@ def evaluate_model(
     logger.info(f"  ROC-AUC:      {metrics['roc_auc']:.4f}")
     logger.info(f"  Log Loss:     {metrics['log_loss']:.4f}")
     logger.info(f"  Brier Score:  {metrics['brier_score']:.4f}")
+    logger.info(f"  ECE:          {metrics['ece']:.4f}")
     
     logger.info("\nMetrics (Calibrated):")
     logger.info(f"  Accuracy:     {metrics['accuracy_calibrated']:.4f}")
     logger.info(f"  F1 Score:     {metrics['f1_score_calibrated']:.4f}")
     logger.info(f"  Log Loss:     {metrics['log_loss_calibrated']:.4f}")
     logger.info(f"  Brier Score:  {metrics['brier_score_calibrated']:.4f}")
+    logger.info(f"  ROC-AUC:      {metrics['roc_auc_calibrated']:.4f}")
+    logger.info(f"  ECE:          {metrics['ece_calibrated']:.4f}")
     
     # Generate plots
     plot_paths = {}
@@ -395,12 +443,15 @@ def generate_report(
             f"- **F1 Score:** {metrics['f1_score']:.4f}",
             f"- **ROC-AUC:** {metrics['roc_auc']:.4f}",
             f"- **Log Loss:** {metrics['log_loss']:.4f}",
-            f"- **Brier Score:** {metrics['brier_score']:.4f}\n",
+            f"- **Brier Score:** {metrics['brier_score']:.4f}",
+            f"- **ECE:** {metrics['ece']:.4f}\n",
             "#### Calibrated",
             f"- **Accuracy:** {metrics['accuracy_calibrated']:.4f}",
             f"- **F1 Score:** {metrics['f1_score_calibrated']:.4f}",
             f"- **Log Loss:** {metrics['log_loss_calibrated']:.4f}",
-            f"- **Brier Score:** {metrics['brier_score_calibrated']:.4f}\n",
+            f"- **Brier Score:** {metrics['brier_score_calibrated']:.4f}",
+            f"- **ROC-AUC:** {metrics['roc_auc_calibrated']:.4f}",
+            f"- **ECE:** {metrics['ece_calibrated']:.4f}\n",
             "\n### Plots\n"
         ])
         
@@ -455,6 +506,11 @@ if __name__ == '__main__':
         required=True,
         help='Path to test data (numpy .npz file with X_test and y_test)'
     )
+    parser.add_argument(
+        '--baseline-modelcard',
+        type=str,
+        help='Path to baseline modelcard JSON for gating comparison'
+    )
     
     args = parser.parse_args()
     
@@ -463,7 +519,12 @@ if __name__ == '__main__':
         model = pickle.load(f)
     
     with open(args.calibrator_path, 'rb') as f:
-        calibrator = pickle.load(f)
+        calibrator_obj = pickle.load(f)
+    if isinstance(calibrator_obj, tuple) and len(calibrator_obj) == 2:
+        calibrator, calibrator_method = calibrator_obj
+    else:
+        calibrator = calibrator_obj
+        calibrator_method = 'isotonic'
     
     # Load test data
     test_data = np.load(args.test_data)
@@ -472,10 +533,73 @@ if __name__ == '__main__':
     
     # Evaluate
     results = evaluate_model(
-        model, calibrator, X_test, y_test,
-        args.model_type, args.elo
+        model,
+        calibrator,
+        calibrator_method,
+        X_test,
+        y_test,
+        args.model_type,
+        args.elo,
     )
-    
+
+    current_timestamp = None
+    model_stem = Path(args.model_path).stem
+    parts = model_stem.split('_')
+    if len(parts) >= 4:
+        current_timestamp = f"{parts[-2]}_{parts[-1]}"
+
+    baseline_path = Path(args.baseline_modelcard) if args.baseline_modelcard else find_previous_modelcard(args.elo, current_timestamp)
+    baseline_metrics = None
+    if baseline_path and baseline_path.exists():
+        with open(baseline_path, 'r', encoding='utf-8') as fh:
+            baseline_card = json.load(fh)
+        baseline_metrics = baseline_card.get('metrics')
+        logger.info("Loaded baseline metrics from %s", baseline_path)
+    elif baseline_path:
+        logger.warning("Baseline modelcard not found at %s", baseline_path)
+
+    metrics = results['metrics']
+    gate_info = {}
+    if baseline_metrics:
+        def _safe(val):
+            return float(val) if val is not None else None
+
+        logloss_base = _safe(baseline_metrics.get('log_loss_calibrated'))
+        logloss_new = _safe(metrics.get('log_loss_calibrated'))
+        brier_base = _safe(baseline_metrics.get('brier_score_calibrated'))
+        brier_new = _safe(metrics.get('brier_score_calibrated'))
+        ece_base = _safe(baseline_metrics.get('ece_calibrated'))
+        ece_new = _safe(metrics.get('ece_calibrated'))
+
+        logloss_improvement = ((logloss_base - logloss_new) / logloss_base) if logloss_base else 0.0
+        brier_improvement = ((brier_base - brier_new) / brier_base) if brier_base else 0.0
+        ece_delta = (ece_new - ece_base) if (ece_new is not None and ece_base is not None) else 0.0
+
+        gate_passed = ((logloss_improvement >= 0.005) or (brier_improvement >= 0.005)) and (ece_delta <= 0.005)
+        gate_info = {
+            'baseline_card': str(baseline_path) if baseline_path else None,
+            'logloss_improvement': logloss_improvement,
+            'brier_improvement': brier_improvement,
+            'ece_delta': ece_delta,
+            'gate_passed': gate_passed,
+        }
+        logger.info(
+            "Gate evaluation -> LogLoss Δ %.4f, Brier Δ %.4f, ECE Δ %.4f :: %s",
+            logloss_improvement,
+            brier_improvement,
+            ece_delta,
+            "ACCEPT" if gate_info['gate_passed'] else "REJECT",
+        )
+        metrics.update(gate_info)
+
+        metrics_path = Path(results['metrics_file'])
+        if metrics_path.exists():
+            with open(metrics_path, 'r', encoding='utf-8') as fh:
+                metrics_data = json.load(fh)
+            metrics_data['metrics'] = metrics
+            with open(metrics_path, 'w', encoding='utf-8') as fh:
+                json.dump(metrics_data, fh, indent=2)
+
     print("\n" + "=" * 70)
     print("Evaluation Complete!")
     print("=" * 70)
@@ -483,4 +607,6 @@ if __name__ == '__main__':
     print(f"Plots saved to:")
     for plot_name, plot_path in results['plots'].items():
         print(f"  - {plot_name}: {plot_path}")
-
+    if gate_info:
+        status = "ACCEPT" if gate_info.get('gate_passed') else "REJECT"
+        print(f"Gate result: {status} (LogLoss Δ {gate_info['logloss_improvement']:.4f}, Brier Δ {gate_info['brier_improvement']:.4f}, ECE Δ {gate_info['ece_delta']:.4f})")

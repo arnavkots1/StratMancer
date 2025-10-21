@@ -137,6 +137,34 @@ jupyter notebook notebooks/validation.ipynb
 python check_status.py
 ```
 
+### Build Rich Feature Assets
+
+```bash
+# Generate matchup, priors, and embedding assets for a patch
+python -m ml_pipeline.features.build_assets --elo mid --patch 14.21 --embedding-dim 32
+```
+
+### Train Rich Models
+
+```bash
+# Low / Mid / High elo groups with rich feature flags
+python -m ml_pipeline.models.train --elo low  --features rich --use-embeddings --use-matchups --use-synergy --ban-context
+python -m ml_pipeline.models.train --elo mid  --features rich --use-embeddings --use-matchups --use-synergy --ban-context
+python -m ml_pipeline.models.train --elo high --features rich --use-embeddings --use-matchups --use-synergy --ban-context
+```
+
+### Evaluate & Gate Models
+
+```bash
+# Evaluate a trained model (writes metrics + reliability plots + gate result)
+python -m ml_pipeline.models.evaluate \
+  --elo mid \
+  --model-type xgb \
+  --model-path ml_pipeline/models/trained/draft_mid_xgb_<TIMESTAMP>.pkl \
+  --calibrator-path ml_pipeline/models/trained/calibrator_mid_<TIMESTAMP>.pkl \
+  --test-data data/processed/eval_mid.npz
+```
+
 ## Configuration
 
 Edit `config/config.yaml`:

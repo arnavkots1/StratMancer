@@ -14,7 +14,7 @@ sys.path.insert(0, '.')
 
 from ml_pipeline.features import load_feature_map, assemble_features
 from ml_pipeline.features.history_index import HistoryIndex
-from ml_pipeline.models.predict import load_model as load_ml_model, predict_proba
+from ml_pipeline.models.predict import load_model as load_ml_model, predict_raw_and_calibrated
 
 from backend.config import settings
 
@@ -27,7 +27,7 @@ class InferenceService:
     def __init__(self):
         self.feature_map: Optional[Dict] = None
         self.history_index: Optional[HistoryIndex] = None
-        self.models: Dict[str, Tuple[Any, Any, Dict]] = {}  # elo -> (model, calibrator, modelcard)
+        self.models: Dict[str, Tuple[Any, Any, str, Dict]] = {}  # elo -> (model, calibrator, method, modelcard)
         self._initialized = False
     
     def initialize(self):
@@ -67,7 +67,7 @@ class InferenceService:
         self._initialized = True
         logger.info("Inference service initialized")
     
-    def load_elo_model(self, elo: str) -> Tuple[Any, Any, Dict]:
+    def load_elo_model(self, elo: str) -> Tuple[Any, Any, str, Dict]:
         """Load model for specific ELO (lazy loading)"""
         if not self._initialized:
             self.initialize()
@@ -78,15 +78,15 @@ class InferenceService:
         logger.info(f"Loading model for {elo} ELO...")
         
         try:
-            model, calibrator, modelcard = load_ml_model(
+            model, calibrator, calibrator_method, modelcard = load_ml_model(
                 elo_group=elo,
                 model_dir=settings.MODEL_DIR
             )
             
-            self.models[elo] = (model, calibrator, modelcard)
+            self.models[elo] = (model, calibrator, calibrator_method, modelcard)
             logger.info(f"Model loaded for {elo}: {modelcard.get('model_type', 'unknown')}")
             
-            return model, calibrator, modelcard
+            return model, calibrator, calibrator_method, modelcard
         
         except FileNotFoundError as e:
             logger.error(f"Model not found for {elo}: {e}")
@@ -102,7 +102,8 @@ class InferenceService:
         blue_picks: list,
         red_picks: list,
         blue_bans: list,
-        red_bans: list
+        red_bans: list,
+        calibrated_for_ui: bool = True,
     ) -> Dict[str, Any]:
         """
         Make draft prediction.
@@ -122,7 +123,7 @@ class InferenceService:
             self.initialize()
         
         # Load model for this ELO
-        model, calibrator, modelcard = self.load_elo_model(elo)
+        model, calibrator, calibrator_method, modelcard = self.load_elo_model(elo)
         model_type = modelcard.get('model_type', 'xgb')
         
         # Create match-like dictionary for feature assembly
@@ -152,43 +153,40 @@ class InferenceService:
             raise ValueError(f"Failed to assemble features: {str(e)}")
         
         # Get uncalibrated prediction
-        y_pred_proba = predict_proba(model, X.reshape(1, -1), model_type)
-        
-        # Handle different return types
-        if isinstance(y_pred_proba, np.ndarray):
-            if y_pred_proba.ndim > 0:
-                y_pred_proba = float(y_pred_proba[0]) if len(y_pred_proba) > 0 else float(y_pred_proba)
-            else:
-                y_pred_proba = float(y_pred_proba)
-        
-        # Apply calibration (disabled - causes issues with partial drafts)
-        # The calibrator tends to map many predictions to the same values
-        # which is problematic for recommendations
-        # y_pred_calibrated = calibrator.predict(np.array([y_pred_proba]))[0]
-        # y_pred_calibrated = float(np.clip(y_pred_calibrated, 0.0, 1.0))
-        
-        # Use raw predictions instead (already clipped to 0-1 by XGBoost)
-        y_pred_calibrated = float(np.clip(y_pred_proba, 0.0, 1.0))
+        raw_prob, calibrated_prob = predict_raw_and_calibrated(
+            model,
+            calibrator,
+            calibrator_method,
+            X.reshape(1, -1),
+            model_type,
+        )
+        raw_prob = float(np.clip(raw_prob[0], 0.0, 1.0))
+        calibrated_prob = float(np.clip(calibrated_prob[0], 0.0, 1.0))
+        selected_prob = calibrated_prob if calibrated_for_ui else raw_prob
         
         # Calculate confidence (inverse entropy)
-        probs = np.array([1 - y_pred_calibrated, y_pred_calibrated])
+        probs = np.array([1 - selected_prob, selected_prob])
         probs = np.clip(probs, 1e-10, 1 - 1e-10)
         entropy = -np.sum(probs * np.log2(probs))
         confidence = float(1.0 - (entropy / 1.0))  # Normalize by max entropy
         
         # Generate simple explanations based on composition features
-        explanations = self._generate_explanations(named, y_pred_calibrated)
+        explanations = self._generate_explanations(named, selected_prob)
         
         # Format response
         result = {
-            'blue_win_prob': y_pred_calibrated,
-            'red_win_prob': 1.0 - y_pred_calibrated,
+            'blue_win_prob': selected_prob,
+            'red_win_prob': 1.0 - selected_prob,
             'confidence': confidence,
-            'calibrated': True,
+            'calibrated': calibrated_for_ui,
+            'probability_source': 'calibrated' if calibrated_for_ui else 'raw',
             'explanations': explanations,
             'model_version': f"{elo}-{model_type}-{modelcard.get('timestamp', 'unknown')[:8]}",
             'elo_group': elo,
-            'patch': patch
+            'patch': patch,
+            'blue_win_prob_raw': raw_prob,
+            'blue_win_prob_calibrated': calibrated_prob,
+            'calibration_method': calibrator_method,
         }
         
         return result
@@ -198,7 +196,8 @@ class InferenceService:
         elo: str,
         patch: str,
         blue_draft: Dict,
-        red_draft: Dict
+        red_draft: Dict,
+        calibrated_for_ui: bool = True,
     ) -> Dict[str, Any]:
         """
         Make draft prediction with role-aware champion placement.
@@ -233,7 +232,8 @@ class InferenceService:
             blue_picks=blue_picks,
             red_picks=red_picks,
             blue_bans=blue_draft.get('bans', []),
-            red_bans=red_draft.get('bans', [])
+            red_bans=red_draft.get('bans', []),
+            calibrated_for_ui=calibrated_for_ui,
         )
     
     def _generate_explanations(self, named_features: Dict, blue_win_prob: float) -> list:

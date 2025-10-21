@@ -3,13 +3,14 @@ Training pipeline for draft prediction models.
 Supports XGBoost, Logistic Regression, and Neural Networks.
 """
 
-import json
-import pickle
 import argparse
+import json
 import logging
-from pathlib import Path
+import pickle
 from datetime import datetime
-from typing import Dict, List, Tuple, Optional, Any
+from itertools import product
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -44,7 +45,7 @@ except ImportError:
 # Local imports
 import sys
 sys.path.insert(0, '.')
-from ml_pipeline.features import assemble_features, load_feature_map
+from ml_pipeline.features import assemble_features, load_feature_map, FeatureContext, FeatureFlags
 from ml_pipeline.features.history_index import HistoryIndex
 
 logging.basicConfig(level=logging.INFO)
@@ -91,7 +92,9 @@ def load_data_for_elo_group(
     elo_group: str,
     data_dir: str = "data/processed",
     feature_map: Optional[Dict] = None,
-    history_index: Optional[HistoryIndex] = None
+    history_index: Optional[HistoryIndex] = None,
+    feature_context: Optional[FeatureContext] = None,
+    feature_mode: str = "basic",
 ) -> Tuple[np.ndarray, np.ndarray, List[str]]:
     """
     Load and assemble features for an ELO group.
@@ -113,7 +116,8 @@ def load_data_for_elo_group(
     if feature_map is None:
         feature_map = load_feature_map()
     
-    if history_index is None:
+    # Only load history_index for basic mode (not needed for rich mode)
+    if history_index is None and feature_mode == "basic":
         history_index = HistoryIndex()
         history_idx_path = Path("ml_pipeline/history_index.json")
         if history_idx_path.exists():
@@ -121,6 +125,9 @@ def load_data_for_elo_group(
         else:
             logger.warning("No history index found, building from scratch...")
             history_index.build_index()
+    elif feature_mode == "rich":
+        # Explicitly set to None for rich mode to avoid loading
+        history_index = None
     
     # Collect all matches for ELOs in this group
     elos = ELO_GROUPS[elo_group]
@@ -141,7 +148,14 @@ def load_data_for_elo_group(
         
         for match in tqdm(matches, desc=f"Processing {elo}", leave=False):
             try:
-                X_vec, named = assemble_features(match, elo, feature_map, history_index)
+                X_vec, named = assemble_features(
+                    match,
+                    elo,
+                    feature_map,
+                    history_index,
+                    mode=feature_mode,
+                    context=feature_context,
+                )
                 y = 1 if named['blue_win'] else 0
                 
                 X_list.append(X_vec)
@@ -345,263 +359,471 @@ def train_nn(
     return model
 
 
-def calibrate_probabilities(
+def train_calibrator(
     y_true: np.ndarray,
-    y_pred_proba: np.ndarray
-) -> IsotonicRegression:
-    """
-    Train isotonic regression calibrator.
-    
-    Args:
-        y_true: True labels
-        y_pred_proba: Predicted probabilities
-    
-    Returns:
-        Trained calibrator
-    """
-    logger.info("Training probability calibrator...")
-    
-    calibrator = IsotonicRegression(out_of_bounds='clip')
-    calibrator.fit(y_pred_proba, y_true)
-    
-    # Evaluate calibration improvement
-    calibrated_probs = calibrator.predict(y_pred_proba)
-    
+    y_pred_proba: np.ndarray,
+    method: str = "auto",
+):
+    """Fit a probability calibrator using Platt scaling or isotonic regression."""
+    if method == "auto":
+        method = "isotonic" if len(y_true) >= 10_000 else "platt"
+
+    logger.info("Training %s calibrator...", method)
+
+    if method == "isotonic":
+        calibrator = IsotonicRegression(out_of_bounds='clip')
+        calibrator.fit(y_pred_proba, y_true)
+        calibrated_probs = calibrator.predict(y_pred_proba)
+    else:
+        platt = LogisticRegression(max_iter=1000)
+        platt.fit(y_pred_proba.reshape(-1, 1), y_true)
+        calibrator = platt
+        calibrated_probs = platt.predict_proba(y_pred_proba.reshape(-1, 1))[:, 1]
+
     uncalib_brier = brier_score_loss(y_true, y_pred_proba)
     calib_brier = brier_score_loss(y_true, calibrated_probs)
-    
     logger.info(f"  Uncalibrated Brier score: {uncalib_brier:.4f}")
     logger.info(f"  Calibrated Brier score: {calib_brier:.4f}")
     logger.info(f"  Improvement: {(uncalib_brier - calib_brier):.4f}")
-    
-    return calibrator
+
+    return calibrator, method, calibrated_probs
+
+
+def apply_calibrator(calibrator: Any, method: str, probs: np.ndarray) -> np.ndarray:
+    if calibrator is None:
+        return probs
+    if method == "isotonic":
+        return calibrator.predict(probs)
+    return calibrator.predict_proba(probs.reshape(-1, 1))[:, 1]
+
+
+def expected_calibration_error(
+    y_true: np.ndarray,
+    probs: np.ndarray,
+    n_bins: int = 10,
+) -> float:
+    bins = np.linspace(0.0, 1.0, n_bins + 1)
+    bin_ids = np.digitize(probs, bins) - 1
+    bin_totals = np.zeros(n_bins, dtype=np.float64)
+    bin_correct = np.zeros(n_bins, dtype=np.float64)
+    bin_confidence = np.zeros(n_bins, dtype=np.float64)
+
+    for idx in range(n_bins):
+        mask = bin_ids == idx
+        if not np.any(mask):
+            continue
+        bin_totals[idx] = np.sum(mask)
+        bin_correct[idx] = np.sum(y_true[mask]) / bin_totals[idx]
+        bin_confidence[idx] = np.mean(probs[mask])
+
+    weights = bin_totals / np.maximum(1.0, np.sum(bin_totals))
+    ece = np.sum(weights * np.abs(bin_correct - bin_confidence))
+    return float(ece)
+
+
+BASE_XGB_PARAMS = {
+    "objective": "binary:logistic",
+    "eval_metric": "logloss",
+    "n_estimators": 1500,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "learning_rate": 0.075,
+    "max_depth": 6,
+    "min_child_weight": 6,
+    "gamma": 0.0,
+    "reg_lambda": 1.0,
+    "random_state": 42,
+    "verbosity": 0,
+    "n_jobs": -1,
+    "use_label_encoder": False,
+}
+
+
+def _build_param_grid() -> List[Dict[str, float]]:
+    grid = []
+    for combo in product([4, 5, 6], [4, 6, 8], [0.7, 0.8, 0.9], [0.6, 0.7, 0.8], [0.05, 0.075, 0.1]):
+        max_depth, min_child_weight, subsample, colsample, eta = combo
+        grid.append(
+            {
+                "max_depth": max_depth,
+                "min_child_weight": min_child_weight,
+                "subsample": subsample,
+                "colsample_bytree": colsample,
+                "learning_rate": eta,
+            }
+        )
+    max_combos = 60
+    if len(grid) > max_combos:
+        grid = grid[:max_combos]
+    return grid
+
+
+def _merge_params(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+    merged = dict(base)
+    merged.update(override)
+    return merged
+
+
+def _grid_search_xgb(
+    X: np.ndarray,
+    y: np.ndarray,
+    cv_folds: int,
+    param_grid: List[Dict[str, Any]],
+) -> Tuple[Dict[str, Any], float, int]:
+    if not HAS_XGB:
+        raise ImportError("XGBoost not installed")
+
+    skf = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=42)
+    best_params: Optional[Dict[str, Any]] = None
+    best_score = float("inf")
+    best_iter = BASE_XGB_PARAMS["n_estimators"]
+
+    for params in param_grid:
+        fold_scores = []
+        fold_iters = []
+        merged_params = _merge_params(BASE_XGB_PARAMS, params)
+
+        for train_idx, val_idx in skf.split(X, y):
+            X_tr, X_val = X[train_idx], X[val_idx]
+            y_tr, y_val = y[train_idx], y[val_idx]
+
+            # Add early_stopping_rounds to params for newer XGBoost versions
+            model_params = merged_params.copy()
+            model_params['early_stopping_rounds'] = 50
+            
+            model = xgb.XGBClassifier(**model_params)
+            model.fit(
+                X_tr,
+                y_tr,
+                eval_set=[(X_val, y_val)],
+                verbose=False,
+            )
+
+            preds = model.predict_proba(X_val)[:, 1]
+            fold_scores.append(log_loss(y_val, preds))
+            fold_iters.append(getattr(model, "best_iteration", merged_params["n_estimators"]))
+
+        mean_score = float(np.mean(fold_scores))
+        if mean_score < best_score:
+            best_score = mean_score
+            best_params = merged_params
+            best_iter = int(np.mean(fold_iters)) if fold_iters else merged_params["n_estimators"]
+
+    if best_params is None:
+        best_params = dict(BASE_XGB_PARAMS)
+
+    return best_params, best_score, best_iter
+
+
+def _fit_final_xgb(
+    X: np.ndarray,
+    y: np.ndarray,
+    params: Dict[str, Any],
+    cv_folds: int,
+) -> Tuple[Any, np.ndarray, int]:
+    skf = StratifiedKFold(n_splits=cv_folds, shuffle=True, random_state=42)
+    oof_preds = np.zeros(len(y), dtype=np.float32)
+    fold_iters: List[int] = []
+
+    for train_idx, val_idx in skf.split(X, y):
+        X_tr, X_val = X[train_idx], X[val_idx]
+        y_tr, y_val = y[train_idx], y[val_idx]
+
+        # Add early_stopping_rounds to params for newer XGBoost versions
+        model_params = params.copy()
+        model_params['early_stopping_rounds'] = 50
+        
+        model = xgb.XGBClassifier(**model_params)
+        model.fit(
+            X_tr,
+            y_tr,
+            eval_set=[(X_val, y_val)],
+            verbose=False,
+        )
+
+        preds = model.predict_proba(X_val)[:, 1]
+        oof_preds[val_idx] = preds.astype(np.float32)
+        fold_iters.append(getattr(model, "best_iteration", params["n_estimators"]))
+
+    best_n_estimators = int(np.mean(fold_iters)) if fold_iters else params["n_estimators"]
+    final_model_params = params.copy()
+    final_model_params['n_estimators'] = best_n_estimators
+    final_model = xgb.XGBClassifier(**final_model_params)
+    final_model.fit(X, y, eval_set=[(X, y)], verbose=False)
+
+    return final_model, oof_preds, best_n_estimators
 
 
 def train_model(
     elo_group: str,
-    model_type: str = 'xgb',
+    model_type: str = "xgb",
     data_dir: str = "data/processed",
     output_dir: str = "ml_pipeline/models/trained",
+    assets_dir: str = "data/assets",
+    feature_mode: str = "basic",
+    feature_flags: Optional[FeatureFlags] = None,
     cv_folds: int = 5,
-    params: Optional[Dict] = None
+    params: Optional[Dict] = None,
 ) -> Dict[str, Any]:
-    """
-    Train a model for an ELO group.
-    
-    Args:
-        elo_group: 'low', 'mid', or 'high'
-        model_type: 'xgb', 'logreg', or 'nn'
-        data_dir: Directory containing match data
-        output_dir: Directory to save trained models
-        cv_folds: Number of cross-validation folds
-        params: Model-specific parameters
-    
-    Returns:
-        Dictionary with training results and metadata
-    """
     logger.info("=" * 70)
-    logger.info(f"Training {model_type.upper()} model for {elo_group.upper()} ELO group")
+    logger.info("Training %s model for %s ELO group", model_type.upper(), elo_group.upper())
     logger.info("=" * 70)
-    
-    # Load data
+
     feature_map = load_feature_map()
     history_index = HistoryIndex()
-    
     history_idx_path = Path("ml_pipeline/history_index.json")
     if history_idx_path.exists():
         history_index.load(str(history_idx_path))
-    
-    X, y, match_ids = load_data_for_elo_group(
-        elo_group, data_dir, feature_map, history_index
+
+    assets_path = Path(assets_dir)
+    flags = feature_flags or FeatureFlags()
+    effective_mode = feature_mode
+
+    priors_available = any(assets_path.glob(f"priors_{elo_group}_*.json"))
+    matchups_available = any(assets_path.glob(f"matchups_{elo_group}_*.npz"))
+    embeddings_available = (assets_path / f"embeddings_{elo_group}.npy").exists()
+
+    assets_info = {
+        "priors": priors_available,
+        "matchups": matchups_available,
+        "embeddings": embeddings_available,
+    }
+
+    if feature_mode == "rich" and not all(assets_info.values()):
+        logger.warning("Required assets missing for rich mode (%s). Falling back to basic features.", assets_info)
+        effective_mode = "basic"
+        flags = FeatureFlags()
+
+    feature_context = FeatureContext(
+        feature_map=feature_map,
+        mode=effective_mode,
+        elo_group=elo_group,
+        assets_dir=assets_dir,
+        flags=flags,
     )
-    
-    # Split data: 80% train, 10% val, 10% test
-    X_temp, X_test, y_temp, y_test = train_test_split(
+
+    X, y, match_ids = load_data_for_elo_group(
+        elo_group,
+        data_dir,
+        feature_map,
+        history_index,
+        feature_context=feature_context,
+        feature_mode=effective_mode,
+    )
+
+    X_train_full, X_test, y_train_full, y_test = train_test_split(
         X, y, test_size=0.1, random_state=42, stratify=y
     )
-    
-    X_train, X_val, y_train, y_val = train_test_split(
-        X_temp, y_temp, test_size=0.111, random_state=42, stratify=y_temp  # 0.111 of 90% = 10% of total
+
+    logger.info(
+        "Data split -> train folds: %d samples (blue WR %.3f), hold-out test: %d samples (blue WR %.3f)",
+        len(y_train_full),
+        y_train_full.mean(),
+        len(y_test),
+        y_test.mean(),
     )
-    
-    logger.info(f"Data split:")
-    logger.info(f"  Train: {len(y_train)} samples ({y_train.mean():.3f} blue WR)")
-    logger.info(f"  Val:   {len(y_val)} samples ({y_val.mean():.3f} blue WR)")
-    logger.info(f"  Test:  {len(y_test)} samples ({y_test.mean():.3f} blue WR)")
-    
-    # Train model
-    if model_type == 'xgb':
-        model = train_xgboost(X_train, y_train, X_val, y_val, params)
-    elif model_type == 'logreg':
-        model = train_logreg(X_train, y_train, X_val, y_val, params)
-    elif model_type == 'nn':
-        model = train_nn(X_train, y_train, X_val, y_val, params)
-    else:
-        raise ValueError(f"Unknown model type: {model_type}")
-    
-    # Get validation predictions for calibration
-    if model_type == 'nn':
+
+    if model_type == "xgb":
+        param_grid = _build_param_grid()
+        best_params, best_score, _ = _grid_search_xgb(X_train_full, y_train_full, cv_folds, param_grid)
+        logger.info("Best CV logloss: %.4f", best_score)
+
+        if params:
+            best_params.update(params)
+
+        model, oof_preds, best_n_estimators = _fit_final_xgb(X_train_full, y_train_full, best_params, cv_folds)
+        logger.info("Selected n_estimators from CV: %d", best_n_estimators)
+
+        calibrator, calibrator_method, calibrated_oof = train_calibrator(y_train_full, oof_preds)
+        y_val_pred_proba = oof_preds
+    elif model_type == "logreg":
+        X_tr, X_val, y_tr, y_val = train_test_split(
+            X_train_full, y_train_full, test_size=0.2, random_state=42, stratify=y_train_full
+        )
+        model = train_logreg(X_tr, y_tr, X_val, y_val, params)
+        y_val_pred_proba = model.predict_proba(X_val)[:, 1]
+        calibrator, calibrator_method, _ = train_calibrator(y_val, y_val_pred_proba)
+        model.fit(X_train_full, y_train_full)
+    elif model_type == "nn":
+        X_tr, X_val, y_tr, y_val = train_test_split(
+            X_train_full, y_train_full, test_size=0.2, random_state=42, stratify=y_train_full
+        )
+        model = train_nn(X_tr, y_tr, X_val, y_val, params)
         model.eval()
         device = next(model.parameters()).device
         with torch.no_grad():
             y_val_pred_proba = model(torch.FloatTensor(X_val).to(device)).cpu().numpy()
-    elif model_type == 'xgb':
-        y_val_pred_proba = model.predict_proba(X_val)[:, 1]
-    else:  # logreg
-        y_val_pred_proba = model.predict_proba(X_val)[:, 1]
-    
-    # Train calibrator
-    calibrator = calibrate_probabilities(y_val, y_val_pred_proba)
-    
-    # Save model and calibrator
+        calibrator, calibrator_method, _ = train_calibrator(y_val, y_val_pred_proba)
+    else:
+        raise ValueError(f"Unknown model type: {model_type}")
+
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-    
+
     model_filename = f"draft_{elo_group}_{model_type}_{timestamp}.pkl"
     calibrator_filename = f"calibrator_{elo_group}_{timestamp}.pkl"
-    
-    model_path = output_path / model_filename
-    calibrator_path = output_path / calibrator_filename
-    
-    with open(model_path, 'wb') as f:
-        pickle.dump(model, f)
-    
-    with open(calibrator_path, 'wb') as f:
-        pickle.dump(calibrator, f)
-    
-    logger.info(f"Saved model to: {model_path}")
-    logger.info(f"Saved calibrator to: {calibrator_path}")
-    
-    # Create model card
-    modelcard = {
-        'elo': elo_group,
-        'model_type': model_type,
-        'timestamp': datetime.now().isoformat(),
-        'features': X.shape[1],
-        'train_size': len(y_train),
-        'val_size': len(y_val),
-        'test_size': len(y_test),
-        'calibrated': True,
-        'source_patch': feature_map['meta']['patch'],
-        'feature_version': 'v1',
-        'model_file': model_filename,
-        'calibrator_file': calibrator_filename
+
+    with open(output_path / model_filename, "wb") as fh:
+        pickle.dump(model, fh)
+    with open(output_path / calibrator_filename, "wb") as fh:
+        pickle.dump((calibrator, calibrator_method), fh)
+
+    if model_type == "nn":
+        model.eval()
+        device = next(model.parameters()).device
+        with torch.no_grad():
+            y_test_pred_raw = model(torch.FloatTensor(X_test).to(device)).cpu().numpy()
+    else:
+        y_test_pred_raw = model.predict_proba(X_test)[:, 1]
+
+    y_test_pred_cal = apply_calibrator(calibrator, calibrator_method, y_test_pred_raw.copy())
+
+    metrics = {
+        "roc_auc_raw": roc_auc_score(y_test, y_test_pred_raw),
+        "roc_auc_calibrated": roc_auc_score(y_test, y_test_pred_cal),
+        "log_loss_raw": log_loss(y_test, y_test_pred_raw),
+        "log_loss_calibrated": log_loss(y_test, y_test_pred_cal),
+        "brier_raw": brier_score_loss(y_test, y_test_pred_raw),
+        "brier_calibrated": brier_score_loss(y_test, y_test_pred_cal),
+        "ece_raw": expected_calibration_error(y_test, y_test_pred_raw),
+        "ece_calibrated": expected_calibration_error(y_test, y_test_pred_cal),
     }
-    
-    modelcard_path = Path("ml_pipeline/models/modelcards") / f"modelcard_{elo_group}_{timestamp}.json"
-    modelcard_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    with open(modelcard_path, 'w') as f:
-        json.dump(modelcard, f, indent=2)
-    
-    logger.info(f"Saved model card to: {modelcard_path}")
-    
+
+    logger.info(
+        "Hold-out metrics | LogLoss raw %.4f -> %.4f calibrated | Brier raw %.4f -> %.4f | ECE raw %.4f -> %.4f",
+        metrics["log_loss_raw"],
+        metrics["log_loss_calibrated"],
+        metrics["brier_raw"],
+        metrics["brier_calibrated"],
+        metrics["ece_raw"],
+        metrics["ece_calibrated"],
+    )
+
+    serializable_params = {k: (float(v) if isinstance(v, np.floating) else v) for k, v in (best_params.items() if model_type == "xgb" else (params or {}))}
+
+    modelcard = {
+        "elo": elo_group,
+        "model_type": model_type,
+        "timestamp": datetime.now().isoformat(),
+        "features": X.shape[1],
+        "train_size": len(y_train_full),
+        "test_size": len(y_test),
+        "calibrated": True,
+        "calibrator_method": calibrator_method,
+        "source_patch": feature_map["meta"]["patch"],
+        "feature_mode": effective_mode,
+        "feature_flags": flags.__dict__,
+        "assets": assets_info,
+        "model_file": model_filename,
+        "calibrator_file": calibrator_filename,
+        "metrics": metrics,
+        "params": serializable_params,
+    }
+
+    card_path = Path("ml_pipeline/models/modelcards")
+    card_path.mkdir(parents=True, exist_ok=True)
+    with open(card_path / f"modelcard_{elo_group}_{timestamp}.json", "w", encoding="utf-8") as fh:
+        json.dump(modelcard, fh, indent=2)
+
     return {
-        'model': model,
-        'calibrator': calibrator,
-        'modelcard': modelcard,
-        'X_train': X_train,
-        'y_train': y_train,
-        'X_val': X_val,
-        'y_val': y_val,
-        'X_test': X_test,
-        'y_test': y_test
+        "model": model,
+        "calibrator": calibrator,
+        "calibrator_method": calibrator_method,
+        "modelcard": modelcard,
+        "metrics": metrics,
+        "match_ids": match_ids,
     }
 
 
 def train_all_elos(
-    model_type: str = 'xgb',
+    model_type: str = "xgb",
     data_dir: str = "data/processed",
-    output_dir: str = "ml_pipeline/models/trained"
+    output_dir: str = "ml_pipeline/models/trained",
+    assets_dir: str = "data/assets",
+    feature_mode: str = "basic",
+    feature_flags: Optional[FeatureFlags] = None,
+    cv_folds: int = 5,
 ) -> Dict[str, Dict]:
-    """
-    Train models for all ELO groups.
-    
-    Args:
-        model_type: 'xgb', 'logreg', or 'nn'
-        data_dir: Directory containing match data
-        output_dir: Directory to save trained models
-    
-    Returns:
-        Dictionary mapping elo_group -> training results
-    """
-    results = {}
-    
-    for elo_group in ['low', 'mid', 'high']:
+    results: Dict[str, Dict] = {}
+    for group in ["low", "mid", "high"]:
         try:
+            flags_copy = FeatureFlags(**(feature_flags.__dict__ if feature_flags else {}))
             result = train_model(
-                elo_group=elo_group,
+                elo_group=group,
                 model_type=model_type,
                 data_dir=data_dir,
-                output_dir=output_dir
+                output_dir=output_dir,
+                assets_dir=assets_dir,
+                feature_mode=feature_mode,
+                feature_flags=flags_copy,
+                cv_folds=cv_folds,
             )
-            results[elo_group] = result
-        except Exception as e:
-            logger.error(f"Failed to train {elo_group} model: {e}")
-            import traceback
-            traceback.print_exc()
-    
+            results[group] = result
+        except Exception as exc:
+            logger.error("Failed to train %s model: %s", group, exc, exc_info=True)
     return results
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='Train draft prediction models'
-    )
-    parser.add_argument(
-        '--model',
-        type=str,
-        default='xgb',
-        choices=['xgb', 'logreg', 'nn'],
-        help='Model type to train'
-    )
-    parser.add_argument(
-        '--elo',
-        type=str,
-        default='all',
-        choices=['low', 'mid', 'high', 'all'],
-        help='ELO group to train (default: all)'
-    )
-    parser.add_argument(
-        '--data-dir',
-        type=str,
-        default='data/processed',
-        help='Directory containing match data'
-    )
-    parser.add_argument(
-        '--output-dir',
-        type=str,
-        default='ml_pipeline/models/trained',
-        help='Directory to save trained models'
-    )
-    
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Train draft prediction models")
+    parser.add_argument("--model", type=str, default="xgb", choices=["xgb", "logreg", "nn"], help="Model type to train")
+    parser.add_argument("--elo", type=str, default="all", choices=["low", "mid", "high", "all"], help="ELO group to train")
+    parser.add_argument("--data-dir", type=str, default="data/processed", help="Directory containing match data")
+    parser.add_argument("--output-dir", type=str, default="ml_pipeline/models/trained", help="Directory to save trained models")
+    parser.add_argument("--assets-dir", type=str, default="data/assets", help="Directory containing feature assets")
+    parser.add_argument("--features", type=str, default="basic", choices=["basic", "rich"], help="Feature mode to use")
+    parser.add_argument("--use-embeddings", action="store_true", help="Include embedding features in rich mode")
+    parser.add_argument("--use-matchups", action="store_true", help="Include lane matchup features in rich mode")
+    parser.add_argument("--use-synergy", action="store_true", help="Include duo synergy features in rich mode")
+    parser.add_argument("--ban-context", action="store_true", help="Enable ban impact context features")
+    parser.add_argument("--pick-order", action="store_true", help="Include pick order context features when available")
+    parser.add_argument("--cv-folds", type=int, default=5, help="Cross-validation folds")
+
     args = parser.parse_args()
-    
-    if args.elo == 'all':
+
+    flags = FeatureFlags(
+        use_embeddings=args.use_embeddings,
+        use_matchups=args.use_matchups,
+        use_synergy=args.use_synergy,
+        ban_context=args.ban_context,
+        pick_order=args.pick_order,
+    )
+
+    if args.features != "rich":
+        flags = FeatureFlags()
+
+    if args.elo == "all":
         results = train_all_elos(
             model_type=args.model,
             data_dir=args.data_dir,
-            output_dir=args.output_dir
+            output_dir=args.output_dir,
+            assets_dir=args.assets_dir,
+            feature_mode=args.features,
+            feature_flags=flags,
+            cv_folds=args.cv_folds,
         )
-        
         print("\n" + "=" * 70)
         print("Training Complete!")
         print("=" * 70)
-        print(f"Trained {len(results)} models:")
-        for elo_group, result in results.items():
-            print(f"  ✓ {elo_group.upper()}: {result['modelcard']['model_file']}")
+        for group, result in results.items():
+            card = result.get("modelcard", {})
+            print(f"  ✓ {group.upper()}: {card.get('model_file', 'unknown')} (ECE {card.get('metrics', {}).get('ece_calibrated', 0.0):.4f})")
     else:
         result = train_model(
             elo_group=args.elo,
             model_type=args.model,
             data_dir=args.data_dir,
-            output_dir=args.output_dir
+            output_dir=args.output_dir,
+            assets_dir=args.assets_dir,
+            feature_mode=args.features,
+            feature_flags=flags,
+            cv_folds=args.cv_folds,
         )
-        
+        card = result.get("modelcard", {})
         print("\n" + "=" * 70)
         print("Training Complete!")
         print("=" * 70)
-        print(f"  Model: {result['modelcard']['model_file']}")
-        print(f"  Calibrator: {result['modelcard']['calibrator_file']}")
+        print(f"  Model: {card.get('model_file', 'unknown')}")
+        print(f"  Calibrator: {card.get('calibrator_file', 'unknown')} [{card.get('calibrator_method', 'n/a')}]")
 

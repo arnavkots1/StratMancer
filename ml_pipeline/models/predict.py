@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 # Cache for loaded models
-_MODEL_CACHE = {}
+_MODEL_CACHE: Dict[str, Tuple[Any, Any, str, Dict]] = {}
 
 
 def entropy(probs: np.ndarray) -> float:
@@ -37,7 +37,7 @@ def entropy(probs: np.ndarray) -> float:
     return -np.sum(p * np.log2(p))
 
 
-def load_model(elo_group: str, model_dir: str = "ml_pipeline/models/trained") -> Tuple[Any, Any, Dict]:
+def load_model(elo_group: str, model_dir: str = "ml_pipeline/models/trained") -> Tuple[Any, Any, str, Dict]:
     """
     Load trained model and calibrator for an ELO group.
     
@@ -87,7 +87,13 @@ def load_model(elo_group: str, model_dir: str = "ml_pipeline/models/trained") ->
     # Load calibrator
     logger.info(f"Loading calibrator: {calibrator_file}")
     with open(calibrator_file, 'rb') as f:
-        calibrator = pickle.load(f)
+        calibrator_obj = pickle.load(f)
+
+    calibrator_method = modelcard.get('calibrator_method', 'isotonic')
+    if isinstance(calibrator_obj, tuple) and len(calibrator_obj) == 2:
+        calibrator, calibrator_method = calibrator_obj
+    else:
+        calibrator = calibrator_obj
     
     # Load model card
     modelcard_file = modelcard_path / f"modelcard_{elo_group}_{timestamp}.json"
@@ -104,9 +110,9 @@ def load_model(elo_group: str, model_dir: str = "ml_pipeline/models/trained") ->
         }
     
     # Cache the loaded model
-    _MODEL_CACHE[cache_key] = (model, calibrator, modelcard)
+    _MODEL_CACHE[cache_key] = (model, calibrator, calibrator_method, modelcard)
     
-    return model, calibrator, modelcard
+    return model, calibrator, calibrator_method, modelcard
 
 
 def predict_proba(model: Any, X: np.ndarray, model_type: str) -> np.ndarray:
@@ -128,6 +134,30 @@ def predict_proba(model: Any, X: np.ndarray, model_type: str) -> np.ndarray:
     else:
         # XGBoost or LogReg
         return model.predict_proba(X)[:, 1]
+
+
+def apply_calibrator(calibrator: Any, method: str, probs: np.ndarray) -> np.ndarray:
+    if calibrator is None:
+        return probs
+    if method == 'isotonic':
+        return calibrator.predict(probs)
+    if hasattr(calibrator, 'predict_proba'):
+        return calibrator.predict_proba(probs.reshape(-1, 1))[:, 1]
+    return calibrator.predict(probs.reshape(-1, 1))
+
+
+def predict_raw_and_calibrated(
+    model: Any,
+    calibrator: Any,
+    calibrator_method: str,
+    X: np.ndarray,
+    model_type: str,
+) -> Tuple[np.ndarray, np.ndarray]:
+    raw = predict_proba(model, X, model_type)
+    if raw.ndim > 1:
+        raw = raw.squeeze()
+    calibrated = apply_calibrator(calibrator, calibrator_method, raw.copy())
+    return raw, calibrated
 
 
 def explain_sample(
@@ -420,4 +450,3 @@ if __name__ == '__main__':
     # Print JSON output
     print("\nJSON Output:")
     print(json.dumps(result, indent=2))
-
