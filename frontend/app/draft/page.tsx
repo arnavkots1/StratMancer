@@ -443,7 +443,11 @@ export default function DraftPage() {
               {/* Start Draft */}
               <button
                 className={`btn ${draftStarted ? 'btn-secondary' : 'btn-primary'}`}
-                onClick={() => setDraftStarted(true)}
+                onClick={() => {
+                  setDraftStarted(true);
+                  setTimerActive(true);
+                  setPickTimer(30);
+                }}
                 disabled={draftStarted}
                 title={draftStarted ? 'Draft already started' : 'Start Draft'}
               >

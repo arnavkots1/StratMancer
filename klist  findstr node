@@ -1,0 +1,475 @@
+[1mdiff --git a/frontend/app/draft/page.tsx b/frontend/app/draft/page.tsx[m
+[1mindex 32a88a5..c2a2a2e 100644[m
+[1m--- a/frontend/app/draft/page.tsx[m
+[1m+++ b/frontend/app/draft/page.tsx[m
+[36m@@ -1,801 +1,15 @@[m
+[31m-'use client';[m
+[31m-[m
+[31m-import { useState, useEffect, useMemo, useCallback } from 'react';[m
+[31m-import { AlertCircle, Loader2, Sparkles } from 'lucide-react';[m
+[31m-import ChampionPicker from '@/components/ChampionPicker';[m
+[31m-import RoleSlots from '@/components/RoleSlots';[m
+[31m-import PredictionCard from '@/components/PredictionCard';[m
+[31m-import RecommendationCard from '@/components/RecommendationCard';[m
+[31m-import AnalysisPanel from '@/components/AnalysisPanel';[m
+[31m-import { api } from '@/lib/api';[m
+[31m-import { getChampionImageUrl } from '@/lib/championImages';[m
+[31m-import type { [m
+[31m-  DraftState, [m
+[31m-  Champion, [m
+[31m-  Elo, [m
+[31m-  PredictionResponse,[m
+[31m-  FeatureMap,[m
+[31m-  TeamComposition[m
+[31m-} from '@/types';[m
+[32m+[m[32mimport { DraftClient } from '@/components/draft/DraftClient'[m
+ [m
+ export default function DraftPage() {[m
+[31m-  const [draftState, setDraftState] = useState<DraftState>({[m
+[31m-    blue: {[m
+[31m-      top: null,[m
+[31m-      jungle: null,[m
+[31m-      mid: null,[m
+[31m-      adc: null,[m
+[31m-      support: null,[m
+[31m-    },[m
+[31m-    red: {[m
+[31m-      top: null,[m
+[31m-      jungle: null,[m
+[31m-      mid: null,[m
+[31m-      adc: null,[m
+[31m-      support: null,[m
+[31m-    },[m
+[31m-    blueBans: [],[m
+[31m-    redBans: [],[m
+[31m-    elo: 'mid', // Default to mid (Gold rank) where we have actual data[m
+[31m-    patch: undefined,[m
+[31m-  });[m
+[31m-[m
+[31m-  // Draft sequence state[m
+[31m-  const [draftStep, setDraftStep] = useState<number>(0);[m
+[31m-  const [pickTimer, setPickTimer] = useState<number>(30);[m
+[31m-  const [timerActive, setTimerActive] = useState<boolean>(false);[m
+[31m-[m
+[31m-  const [champions, setChampions] = useState<Champion[]>([]);[m
+[31m-  const [loading, setLoading] = useState(true);[m
+[31m-  const [predicting, setPredicting] = useState(false);[m
+[31m-  const [prediction, setPrediction] = useState<PredictionResponse | null>(null);[m
+[31m-  const [error, setError] = useState<string | null>(null);[m
+[31m-[m
+[31m-  // Recommendation state[m
+[31m-  const [showRecommendations, setShowRecommendations] = useState(false);[m
+[31m-  const [recommendations, setRecommendations] = useState<any>(null);[m
+[31m-  const [recommendationLoading, setRecommendationLoading] = useState(false);[m
+[31m-  const [recommendationError, setRecommendationError] = useState<string | null>(null);[m
+[31m-[m
+[31m-  // Analysis state[m
+[31m-  const [showAnalysis, setShowAnalysis] = useState(false);[m
+[31m-  const [analysis, setAnalysis] = useState<any>(null);[m
+[31m-  const [analyzing, setAnalyzing] = useState(false);[m
+[31m-  // Require explicit start to begin any draft interactions[m
+[31m-  const [draftStarted, setDraftStarted] = useState<boolean>(false);[m
+[31m-[m
+[31m-  // Define the draft sequence for Gold rank (with bans)[m
+[31m-  // Format: { team, action, role }[m
+[31m-  const DRAFT_SEQUENCE = useMemo(() => {[m
+[31m-    const sequence: Array<{ team: 'blue' | 'red'; action: 'ban' | 'pick'; role?: keyof TeamComposition }> = [];[m
+[31m-    [m
+[31m-    // Ban phase (10 bans alternating)[m
+[31m-    for (let i = 0; i < 5; i++) {[m
+[31m-      sequence.push({ team: 'blue', action: 'ban' });[m
+[31m-      sequence.push({ team: 'red', action: 'ban' });[m
+[31m-    }[m
+[31m-    [m
+[31m-    // Pick phase (snake draft)[m
+[31m-    const pickOrder: Array<{ team: 'blue' | 'red'; role: keyof TeamComposition }> = [[m
+[31m-      { team: 'blue', role: 'top' },[m
+[31m-      { team: 'red', role: 'top' },[m
+[31m-      { team: 'red', role: 'jungle' },[m
+[31m-      { team: 'blue', role: 'jungle' },[m
+[31m-      { team: 'blue', role: 'mid' },[m
+[31m-      { team: 'red', role: 'mid' },[m
+[31m-      { team: 'red', role: 'adc' },[m
+[31m-      { team: 'blue', role: 'adc' },[m
+[31m-      { team: 'blue', role: 'support' },[m
+[31m-      { team: 'red', role: 'support' },[m
+[31m-    ];[m
+[31m-    [m
+[31m-    pickOrder.forEach(pick => {[m
+[31m-      sequence.push({ team: pick.team, action: 'pick', role: pick.role });[m
+[31m-    });[m
+[31m-    [m
+[31m-    return sequence;[m
+[31m-  }, []);[m
+[31m-[m
+[31m-  const currentDraftAction = useMemo(() => {[m
+[31m-    if (draftStep >= DRAFT_SEQUENCE.length) {[m
+[31m-      return null; // Draft complete[m
+[31m-    }[m
+[31m-    return DRAFT_SEQUENCE[draftStep];[m
+[31m-  }, [draftStep, DRAFT_SEQUENCE]);[m
+[31m-[m
+[31m-  // Load champion data on mount[m
+[31m-  useEffect(() => {[m
+[31m-    loadChampions();[m
+[31m-  }, []);[m
+[31m-[m
+[31m-[m
+[31m-  // Pick timer countdown[m
+[31m-  useEffect(() => {[m
+[31m-    if (!timerActive) return;[m
+[31m-    [m
+[31m-    if (pickTimer <= 0) {[m
+[31m-      setTimerActive(false);[m
+[31m-      setPickTimer(30);[m
+[31m-      return;[m
+[31m-    }[m
+[31m-[m
+[31m-    const interval = setInterval(() => {[m
+[31m-      setPickTimer(prev => prev - 1);[m
+[31m-    }, 1000);[m
+[31m-[m
+[31m-    return () => clearInterval(interval);[m
+[31m-  }, [timerActive, pickTimer]);[m
+[31m-[m
+[31m-  const loadChampions = async () => {[m
+[31m-    try {[m
+[31m-      setLoading(true);[m
+[31m-      setError(null);[m
+[31m-      [m
+[31m-      // Try to load feature map from backend[m
+[31m-      const featureMap: FeatureMap = await api.getFeatureMap();[m
+[31m-      [m
+[31m-      // Convert feature map to champion array[m
+[31m-      const champArray: Champion[] = Object.entries(featureMap.champ_index).map(([name, championId]) => {[m
+[31m-        // Values in champ_index are the actual Riot champion IDs[m
+[31m-        const champId = String(championId);[m
+[31m-        const tags = featureMap.tags[champId] || {};[m
+[31m-        [m
+[31m-        // Convert role string to array and normalize to uppercase[m
+[31m-        let roleArray: string[] = [];[m
+[31m-        if (tags.role) {[m
+[31m-          if (Array.isArray(tags.role)) {[m
+[31m-            roleArray = tags.role;[m
+[31m-          } else if (typeof tags.role === 'string') {[m
+[31m-            roleArray = [tags.role];[m
+[31m-          }[m
+[31m-        }[m
+[31m-        [m
+[31m-        return {[m
+[31m-          id: champId, // This is the actual champion ID (e.g., "67" for Vayne)[m
+[31m-          name: name,[m
+[31m-          key: champId,[m
+[31m-          roles: roleArray.map((r: string) => r.toUpperCase()) as any,[m
+[31m-          tags: tags,[m
+[31m-        };[m
+[31m-      });[m
+[31m-[m
+[31m-      console.log('Loaded champions:', champArray.length);[m
+[31m-      console.log('First few champions:', champArray.slice(0, 5));[m
+[31m-      setChampions(champArray);[m
+[31m-    } catch (err) {[m
+[31m-      console.error('Failed to load champions:', err);[m
+[31m-      setError('Failed to load champion data. Please refresh the page.');[m
+[31m-    } finally {[m
+[31m-      setLoading(false);[m
+[31m-    }[m
+[31m-  };[m
+[31m-[m
+[31m-  const handlePredictDraft = async () => {[m
+[31m-    if (!draftStarted) {[m
+[31m-      setError('Click "Start Draft" to begin.');[m
+[31m-      return;[m
+[31m-    }[m
+[31m-    try {[m
+[31m-      setPredicting(true);[m
+[31m-      setError(null);[m
+[31m-[m
+[31m-      // Validate draft state - all 5 positions must be filled[m
+[31m-      const blueComplete = Object.values(draftState.blue).every(Boolean);[m
+[31m-      const redComplete = Object.values(draftState.red).every(Boolean);[m
+[31m-[m
+[31m-      if (!blueComplete || !redComplete) {[m
+[31m-        setError('Please complete the draft! All 5 positions must be filled for both teams.');[m
+[31m-        return;[m
+[31m-      }[m
+[31m-[m
+[31m-      // Convert to API format (backend expects top/jgl/mid/adc/sup keys)[m
+[31m-      const requestData = {[m
+[31m-        elo: draftState.elo,[m
+[31m-        patch: draftState.patch || '15.20',[m
+[31m-        blue: {[m
+[31m-          top: parseInt(draftState.blue.top!.id),[m
+[31m-          jgl: parseInt(draftState.blue.jungle!.id),[m
+[31m-          mid: parseInt(draftState.blue.mid!.id),[m
+[31m-          adc: parseInt(draftState.blue.adc!.id),[m
+[31m-          sup: parseInt(draftState.blue.support!.id),[m
+[31m-          bans: draftState.blueBans.map(c => parseInt(c.id)),[m
+[31m-        },[m
+[31m-        red: {[m
+[31m-          top: parseInt(draftState.red.top!.id),[m
+[31m-          jgl: parseInt(draftState.red.jungle!.id),[m
+[31m-          mid: parseInt(draftState.red.mid!.id),[m
+[31m-          adc: parseInt(draftState.red.adc!.id),[m
+[31m-          sup: parseInt(draftState.red.support!.id),[m
+[31m-          bans: draftState.redBans.map(c => parseInt(c.id)),[m
+[31m-        },[m
+[31m-      };[m
+[31m-[m
+[31m-      const result = await api.predictDraft(requestData as any);[m
+[31m-      setPrediction(result);[m
+[31m-      [m
+[31m-      // Automatically trigger analysis after prediction[m
+[31m-      handleAnalyzeDraft(requestData, result);[m
+[31m-    } catch (err: any) {[m
+[31m-      console.error('Prediction failed:', err);[m
+[31m-      setError(err.message || 'Prediction failed. Please try again.');[m
+[31m-    } finally {[m
+[31m-      setPredicting(false);[m
+[31m-    }[m
+[31m-  };[m
+[31m-[m
+[31m-  const handleAnalyzeDraft = async (draftData: any, predictionResult: PredictionResponse) => {[m
+[31m-    try {[m
+[31m-      setAnalyzing(true);[m
+[31m-      [m
+[31m-      const analysisData = {[m
+[31m-        ...draftData,[m
+[31m-        blue_win_prob: predictionResult.blue_win_prob,[m
+[31m-        red_win_prob: predictionResult.red_win_prob,[m
+[31m-      };[m
+[31m-[m
+[31m-      const result = await api.analyzeDraft(analysisData);[m
+[31m-      setAnalysis(result);[m
+[31m-      setShowAnalysis(true);[m
+[31m-    } catch (err: any) {[m
+[31m-      console.error('Analysis failed:', err);[m
+[31m-      // Don't show error to user - analysis is optional[m
+[31m-    } finally {[m
+[31m-      setAnalyzing(false);[m
+[31m-    }[m
+[31m-  };[m
+[31m-[m
+[31m-  const handleGetRecommendations = useCallback(async () => {[m
+[31m-    if (!currentDraftAction) return;[m
+[31m-[m
+[31m-    setRecommendationLoading(true);[m
+[31m-    setRecommendationError(null);[m
+[31m-    setShowRecommendations(true);[m
+[31m-[m
+[31m-    try {[m
+[31m-      const { team, action, role } = currentDraftAction;[m
+[31m-[m
+[31m-      // Build draft state for API[m
+[31m-      const draftForAPI = {[m
+[31m-        elo: draftState.elo,[m
+[31m-        side: team,[m
+[31m-        blue: {[m
+[31m-          top: draftState.blue.top ? parseInt(draftState.blue.top.id) : undefined,[m
+[31m-          jgl: draftState.blue.jungle ? parseInt(draftState.blue.jungle.id) : undefined,[m
+[31m-          mid: draftState.blue.mid ? parseInt(draftState.blue.mid.id) : undefined,[m
+[31m-          adc: draftState.blue.adc ? parseInt(draftState.blue.adc.id) : undefined,[m
+[31m-          sup: draftState.blue.support ? parseInt(draftState.blue.support.id) : undefined,[m
+[31m-          bans: draftState.blueBans.map(c => parseInt(c.id)),[m
+[31m-        },[m
+[31m-        red: {[m
+[31m-          top: draftState.red.top ? parseInt(draftState.red.top.id) : undefined,[m
+[31m-          jgl: draftState.red.jungle ? parseInt(draftState.red.jungle.id) : undefined,[m
+[31m-          mid: draftState.red.mid ? parseInt(draftState.red.mid.id) : undefined,[m
+[31m-          adc: draftState.red.adc ? parseInt(draftState.red.adc.id) : undefined,[m
+[31m-          sup: draftState.red.support ? parseInt(draftState.red.support.id) : undefined,[m
+[31m-          bans: draftState.redBans.map(c => parseInt(c.id)),[m
+[31m-        },[m
+[31m-        patch: draftState.patch || '15.20',[m
+[31m-        top_n: 5,[m
+[31m-      };[m
+[31m-[m
+[31m-      // Debug logging[m
+[31m-      console.log('Frontend ban data being sent:');[m
+[31m-      console.log('Blue bans:', draftState.blueBans.map(c => `${c.name} (ID: ${c.id})`));[m
+[31m-      console.log('Red bans:', draftState.redBans.map(c => `${c.name} (ID: ${c.id})`));[m
+[31m-      console.log('Blue ban IDs:', draftForAPI.blue.bans);[m
+[31m-      console.log('Red ban IDs:', draftForAPI.red.bans);[m
+[31m-      [m
+[31m-      // Check specifically for Vayne[m
+[31m-      const vayneInBlue = draftState.blueBans.find(c => c.name === 'Vayne');[m
+[31m-      const vayneInRed = draftState.redBans.find(c => c.name === 'Vayne');[m
+[31m-      if (vayneInBlue) console.log('Vayne in blue bans:', vayneInBlue.id);[m
+[31m-      if (vayneInRed) console.log('Vayne in red bans:', vayneInRed.id);[m
+[31m-[m
+[31m-      let result;[m
+[31m-      if (action === 'ban') {[m
+[31m-        result = await api.getBanRecommendations(draftForAPI);[m
+[31m-      } else if (action === 'pick' && role) {[m
+[31m-        // Map frontend role names to backend role names[m
+[31m-        const roleMap: Record<string, 'top' | 'jgl' | 'mid' | 'adc' | 'sup'> = {[m
+[31m-          'jungle': 'jgl',[m
+[31m-          'support': 'sup',[m
+[31m-          'top': 'top',[m
+[31m-          'mid': 'mid',[m
+[31m-          'adc': 'adc'[m
+[31m-        };[m
+[31m-        const backendRole = roleMap[role] || role as 'top' | 'jgl' | 'mid' | 'adc' | 'sup';[m
+[31m-        result = await api.getPickRecommendations({ ...draftForAPI, role: backendRole });[m
+[31m-      }[m
+[31m-[m
+[31m-      setRecommendations(result);[m
+[31m-    } catch (err: any) {[m
+[31m-      console.error('Recommendation failed:', err);[m
+[31m-      setRecommendationError(err.message || 'Failed to get recommendations');[m
+[31m-    } finally {[m
+[31m-      setRecommendationLoading(false);[m
+[31m-    }[m
+[31m-  }, [currentDraftAction, draftState, api]);[m
+[31m-[m
+[31m-  // Auto-show recommendations when draft step changes (only after draft starts)[m
+[31m-  useEffect(() => {[m
+[31m-    if (currentDraftAction && champions.length > 0 && draftStep > 0) {[m
+[31m-      // Auto-get recommendations for each new draft step (only after draft has started)[m
+[31m-      handleGetRecommendations();[m
+[31m-    }[m
+[31m-  }, [currentDraftAction, draftStep, champions.length, handleGetRecommendations]);[m
+[31m-[m
+[31m-  const handleSelectRecommendation = (championId: number) => {[m
+[31m-    console.log('Selecting recommendation:', championId);[m
+[31m-    console.log('Available champions:', champions.length);[m
+[31m-    const champion = champions.find(c => parseInt(c.id) === championId);[m
+[31m-    console.log('Found champion:', champion);[m
+[31m-    if (champion) {[m
+[31m-      handleChampionSelect(champion);[m
+[31m-      setShowRecommendations(false);[m
+[31m-      setRecommendations(null);[m
+[31m-    } else {[m
+[31m-      console.error('Champion not found for ID:', championId);[m
+[31m-    }[m
+[31m-  };[m
+[31m-[m
+[31m-  const handleResetDraft = () => {[m
+[31m-    setDraftState({[m
+[31m-      blue: {[m
+[31m-        top: null,[m
+[31m-        jungle: null,[m
+[31m-        mid: null,[m
+[31m-        adc: null,[m
+[31m-        support: null,[m
+[31m-      },[m
+[31m-      red: {[m
+[31m-        top: null,[m
+[31m-        jungle: null,[m
+[31m-        mid: null,[m
+[31m-        adc: null,[m
+[31m-        support: null,[m
+[31m-      },[m
+[31m-      blueBans: [],[m
+[31m-      redBans: [],[m
+[31m-      elo: 'mid',[m
+[31m-      patch: undefined,[m
+[31m-    });[m
+[31m-    setPrediction(null);[m
+[31m-    setError(null);[m
+[31m-    setDraftStep(0);[m
+[31m-    setPickTimer(30);[m
+[31m-    setTimerActive(false);[m
+[31m-    setShowRecommendations(false);[m
+[31m-    setRecommendations(null);[m
+[31m-    setShowAnalysis(false);[m
+[31m-    setAnalysis(null);[m
+[31m-  };[m
+[31m-[m
+[31m-  const handleChampionSelect = (champion: Champion) => {[m
+[31m-    if (!draftStarted) {[m
+[31m-      setError('Click "Start Draft" to begin.');[m
+[31m-      setTimeout(() => setError(null), 2000);[m
+[31m-      return;[m
+[31m-    }[m
+[31m-    if (!currentDraftAction) {[m
+[31m-      setError('Draft is complete! Click Analyze Draft or Reset.');[m
+[31m-      setTimeout(() => setError(null), 3000);[m
+[31m-      return;[m
+[31m-    }[m
+[31m-[m
+[31m-    const { team, action, role } = currentDraftAction;[m
+[31m-[m
+[31m-    if (action === 'ban') {[m
+[31m-      const teamBans = team === 'blue' ? draftState.blueBans : draftState.redBans;[m
+[31m-      if (teamBans.length >= 5) {[m
+[31m-        setError(`${team.toUpperCase()} team already has 5 bans!`);[m
+[31m-        setTimeout(() => setError(null), 3000);[m
+[31m-        return;[m
+[31m-      }[m
+[31m-      if (team === 'blue') {[m
+[31m-        setDraftState(prev => ({ ...prev, blueBans: [...prev.blueBans, champion] }));[m
+[31m-      } else {[m
+[31m-        setDraftState(prev => ({ ...prev, redBans: [...prev.redBans, champion] }));[m
+[31m-      }[m
+[31m-    } else if (action === 'pick' && role) {[m
+[31m-      if (team === 'blue') {[m
+[31m-        setDraftState(prev => ({[m
+[31m-          ...prev,[m
+[31m-          blue: { ...prev.blue, [role]: champion }[m
+[31m-        }));[m
+[31m-      } else {[m
+[31m-        setDraftState(prev => ({[m
+[31m-          ...prev,[m
+[31m-          red: { ...prev.red, [role]: champion }[m
+[31m-        }));[m
+[31m-      }[m
+[31m-    }[m
+[31m-[m
+[31m-    // Advance to next step[m
+[31m-    setDraftStep(prev => prev + 1);[m
+[31m-    setPickTimer(30);[m
+[31m-    setError(null);[m
+[31m-  };[m
+[31m-[m
+[31m-  if (loading) {[m
+[31m-    return ([m
+[31m-      <div className="container mx-auto px-4 py-16">[m
+[31m-        <div className="flex flex-col items-center justify-center space-y-4">[m
+[31m-          <Loader2 className="w-12 h-12 text-gold-500 animate-spin" />[m
+[31m-          <p className="text-gray-400">Loading champion data...</p>[m
+[31m-        </div>[m
+[31m-      </div>[m
+[31m-    );[m
+[31m-  }[m
+[31m-[m
+   return ([m
+[31m-    <div className="container mx-auto px-4 py-8">[m
+[31m-      <div className="max-w-7xl mx-auto">[m
+[31m-        {/* Header with Draft Controls */}[m
+[31m-        <div className="mb-8">[m
+[31m-          <div className="flex items-center justify-between mb-4">[m
+[31m-            <div>[m
+[31m-              <h1 className="text-3xl font-bold mb-2">Draft Analyzer</h1>[m
+[31m-              <p className="text-gray-400">[m
+[31m-                Click champions to assign them to team positions[m
+[31m-              </p>[m
+[31m-            </div>[m
+[31m-            <div className="flex items-center gap-4">[m
+[31m-              {/* Start Draft */}[m
+[31m-              <button[m
+[31m-                className={`btn ${draftStarted ? 'btn-secondary' : 'btn-primary'}`}[m
+[31m-                onClick={() => setDraftStarted(true)}[m
+[31m-                disabled={draftStarted}[m
+[31m-                title={draftStarted ? 'Draft already started' : 'Start Draft'}[m
+[31m-              >[m
+[31m-                {draftStarted ? 'Draft Started' : 'Start Draft'}[m
+[31m-              </button>[m
+[31m-              {/* Timer */}[m
+[31m-              <div className="flex items-center gap-2">[m
+[31m-                <span className="text-sm text-gray-400">Pick Timer:</span>[m
+[31m-                <div className={`px-4 py-2 rounded-lg font-bold text-xl ${timerActive ? 'bg-red-600 animate-pulse' : 'bg-gray-700'}`}>[m
+[31m-                  {pickTimer}s[m
+[31m-                </div>[m
+[31m-                <button[m
+[31m-                  onClick={() => {[m
+[31m-                    setTimerActive(!timerActive);[m
+[31m-                    if (!timerActive) setPickTimer(30);[m
+[31m-                  }}[m
+[31m-                  className="btn btn-secondary"[m
+[31m-                >[m
+[31m-                  {timerActive ? 'Pause' : 'Start'}[m
+[31m-                </button>[m
+[31m-              </div>[m
+[31m-            </div>[m
+

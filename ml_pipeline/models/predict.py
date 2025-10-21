@@ -89,13 +89,7 @@ def load_model(elo_group: str, model_dir: str = "ml_pipeline/models/trained") ->
     with open(calibrator_file, 'rb') as f:
         calibrator_obj = pickle.load(f)
 
-    calibrator_method = modelcard.get('calibrator_method', 'isotonic')
-    if isinstance(calibrator_obj, tuple) and len(calibrator_obj) == 2:
-        calibrator, calibrator_method = calibrator_obj
-    else:
-        calibrator = calibrator_obj
-    
-    # Load model card
+    # Load model card first
     modelcard_file = modelcard_path / f"modelcard_{elo_group}_{timestamp}.json"
     
     if modelcard_file.exists():
@@ -108,6 +102,13 @@ def load_model(elo_group: str, model_dir: str = "ml_pipeline/models/trained") ->
             'model_type': model_type,
             'timestamp': timestamp
         }
+
+    # Now we can safely access modelcard
+    calibrator_method = modelcard.get('calibrator_method', 'isotonic')
+    if isinstance(calibrator_obj, tuple) and len(calibrator_obj) == 2:
+        calibrator, calibrator_method = calibrator_obj
+    else:
+        calibrator = calibrator_obj
     
     # Cache the loaded model
     _MODEL_CACHE[cache_key] = (model, calibrator, calibrator_method, modelcard)

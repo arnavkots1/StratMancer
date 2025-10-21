@@ -175,12 +175,28 @@ class RecommenderService:
         test_draft[side][role] = champion_id
         
         try:
-            # Use the new role-aware prediction method
-            result = inference_service.predict_draft_with_roles(
+            # Convert role-based draft to positional arrays (same as predict_draft_with_roles)
+            role_order = ['top', 'jgl', 'mid', 'adc', 'sup']
+            
+            blue_picks = []
+            red_picks = []
+            
+            for role in role_order:
+                blue_champ = test_draft['blue'].get(role)
+                red_champ = test_draft['red'].get(role)
+                
+                # Convert None to -1, keep existing values
+                blue_picks.append(blue_champ if blue_champ is not None else -1)
+                red_picks.append(red_champ if red_champ is not None else -1)
+            
+            # Use the main predict_draft method directly (which handles the conversion properly)
+            result = inference_service.predict_draft(
                 elo=elo,
                 patch=patch,
-                blue_draft=test_draft['blue'],
-                red_draft=test_draft['red'],
+                blue_picks=blue_picks,
+                red_picks=red_picks,
+                blue_bans=test_draft['blue'].get('bans', []),
+                red_bans=test_draft['red'].get('bans', []),
                 calibrated_for_ui=False,
             )
             return result.get('blue_win_prob_raw', result['blue_win_prob'])

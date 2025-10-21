@@ -127,12 +127,16 @@ class InferenceService:
         model_type = modelcard.get('model_type', 'xgb')
         
         # Create match-like dictionary for feature assembly
+        # Convert positional arrays to champion ID lists (same format as training data)
+        blue_pick_list = [champ_id for champ_id in blue_picks if champ_id != -1]
+        red_pick_list = [champ_id for champ_id in red_picks if champ_id != -1]
+        
         match_data = {
             'match_id': 'api_request',
             'patch': patch,
             'elo_rank': elo.upper(),
-            'blue_picks': blue_picks,
-            'red_picks': red_picks,
+            'blue_picks': blue_pick_list,  # Use champion ID list, not positional array
+            'red_picks': red_pick_list,    # Use champion ID list, not positional array
             'blue_bans': blue_bans + [-1] * (5 - len(blue_bans)),  # Pad to 5
             'red_bans': red_bans + [-1] * (5 - len(red_bans)),  # Pad to 5
             'blue_win': None,  # Unknown
