@@ -1,139 +1,412 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;200;300;400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 94.1%;
+  }
+
   body {
-    @apply bg-gray-950 text-gray-100;
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
 @layer components {
-  /* Champion Grid */
-  .champion-grid {
-    @apply grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2;
+  /* Elite Scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-900/20;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gradient-to-b from-primary-500 to-primary-600 rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply from-primary-400 to-primary-500;
   }
 
-  /* Champion Card */
+  /* Elite Glassmorphism */
+  .glass {
+    @apply bg-white/5 backdrop-blur-md border border-white/10;
+  }
+  
+  .glass-dark {
+    @apply bg-black/5 backdrop-blur-md border border-black/10;
+  }
+  
+  .glass-card {
+    @apply glass rounded-2xl p-6 shadow-elite;
+  }
+  
+  .glass-button {
+    @apply glass rounded-xl px-6 py-3 font-medium transition-all duration-300;
+    @apply hover:bg-white/10 hover:scale-105 active:scale-95;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary/50;
+  }
+
+  /* Elite Buttons */
+  .btn {
+    @apply inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-medium;
+    @apply transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-primary {
+    @apply bg-gradient-to-r from-primary-500 to-primary-600 text-white;
+    @apply hover:from-primary-600 hover:to-primary-700 hover:scale-105;
+    @apply focus:ring-primary-500 shadow-lg shadow-primary-500/25;
+  }
+  
+  .btn-secondary {
+    @apply bg-gradient-to-r from-secondary-500 to-secondary-600 text-white;
+    @apply hover:from-secondary-600 hover:to-secondary-700 hover:scale-105;
+    @apply focus:ring-secondary-500 shadow-lg shadow-secondary-500/25;
+  }
+  
+  .btn-outline {
+    @apply border-2 border-primary-500 text-primary-400 bg-transparent;
+    @apply hover:bg-primary-500 hover:text-white hover:scale-105;
+    @apply focus:ring-primary-500;
+  }
+  
+  .btn-ghost {
+    @apply text-foreground hover:bg-accent hover:text-accent-foreground;
+    @apply hover:scale-105 focus:ring-accent;
+  }
+
+  /* Elite Cards */
+  .card {
+    @apply rounded-2xl border border-border bg-card text-card-foreground;
+    @apply shadow-elite transition-all duration-300 hover:shadow-elite-lg;
+  }
+  
+  .card-header {
+    @apply flex flex-col space-y-1.5 p-6;
+  }
+  
+  .card-title {
+    @apply text-2xl font-semibold leading-none tracking-tight;
+  }
+  
+  .card-description {
+    @apply text-sm text-muted-foreground;
+  }
+  
+  .card-content {
+    @apply p-6 pt-0;
+  }
+  
+  .card-footer {
+    @apply flex items-center p-6 pt-0;
+  }
+
+  /* Elite Inputs */
+  .input {
+    @apply flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2;
+    @apply text-sm ring-offset-background file:border-0 file:bg-transparent;
+    @apply file:text-sm file:font-medium placeholder:text-muted-foreground;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+    @apply focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply transition-all duration-300 focus:scale-105;
+  }
+
+  /* Elite Select */
+  .select {
+    @apply flex h-10 w-full items-center justify-between rounded-xl border border-input;
+    @apply bg-background px-3 py-2 text-sm ring-offset-background;
+    @apply placeholder:text-muted-foreground focus:outline-none focus:ring-2;
+    @apply focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed;
+    @apply disabled:opacity-50 transition-all duration-300 focus:scale-105;
+  }
+
+  /* Elite Badges */
+  .badge {
+    @apply inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold;
+    @apply transition-colors focus:outline-none focus:ring-2 focus:ring-ring;
+    @apply focus:ring-offset-2;
+  }
+  
+  .badge-default {
+    @apply border-transparent bg-primary text-primary-foreground hover:bg-primary/80;
+  }
+  
+  .badge-secondary {
+    @apply border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80;
+  }
+  
+  .badge-destructive {
+    @apply border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80;
+  }
+  
+  .badge-outline {
+    @apply text-foreground;
+  }
+  
+  .badge-glass {
+    @apply bg-white/5 backdrop-blur-md border border-white/10 text-foreground;
+  }
+  
+  .badge-glow {
+    @apply bg-primary-500/20 text-primary-400 border-primary-500/30 shadow-glow;
+  }
+  
+  .badge-premium {
+    @apply bg-gradient-to-r from-primary-500 to-secondary-500 text-white shadow-elite;
+  }
+
+  /* Elite Champion Grid */
+  .champion-grid {
+    @apply grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-3;
+  }
+
   .champion-card {
-    @apply relative aspect-square rounded-lg overflow-hidden cursor-pointer transition-all duration-200;
-    @apply hover:scale-105 hover:shadow-lg hover:shadow-gold-500/50;
+    @apply relative aspect-square rounded-2xl overflow-hidden cursor-pointer;
+    @apply transition-all duration-300 hover:scale-110 hover:shadow-elite;
     @apply border-2 border-transparent;
   }
 
+  .champion-card::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0;
+    @apply transition-opacity duration-300;
+  }
+  
+  .champion-card:hover::before {
+    @apply opacity-100;
+  }
+
   .champion-card.selected {
-    @apply border-gold-500 shadow-lg shadow-gold-500/50;
+    @apply border-primary shadow-glow ring-2 ring-primary/20;
   }
 
-  .champion-card.disabled {
-    @apply opacity-40 cursor-not-allowed hover:scale-100 hover:shadow-none;
-    @apply grayscale;
+  .champion-card.banned {
+    @apply opacity-50 grayscale;
   }
 
-  /* Role Slot */
+  .champion-card.picked {
+    @apply opacity-75;
+  }
+
+  /* Elite Role Slots */
   .role-slot {
-    @apply relative w-20 h-20 rounded-lg border-2 border-gray-700 bg-gray-800;
-    @apply flex items-center justify-center overflow-hidden;
-    @apply transition-all duration-200;
+    @apply relative rounded-2xl border-2 border-dashed border-gray-600;
+    @apply bg-gray-900/20 backdrop-blur-sm transition-all duration-300;
+    @apply hover:border-primary-500 hover:bg-primary-500/10;
+    @apply min-h-[80px] flex items-center justify-center;
   }
 
   .role-slot.filled {
-    @apply border-gold-600 shadow-md shadow-gold-500/30 bg-gray-900;
+    @apply border-solid border-primary-500 bg-primary-500/10;
   }
 
   .role-slot.blue {
-    @apply border-blue-600;
+    @apply border-blue-500/50 bg-blue-500/5;
   }
 
   .role-slot.blue.filled {
-    @apply border-blue-500 shadow-md shadow-blue-500/30;
+    @apply border-blue-500 bg-blue-500/10;
   }
 
   .role-slot.red {
-    @apply border-red-600;
+    @apply border-red-500/50 bg-red-500/5;
   }
 
   .role-slot.red.filled {
-    @apply border-red-500 shadow-md shadow-red-500/30;
+    @apply border-red-500 bg-red-500/10;
   }
 
-  /* Button Variants */
-  .btn {
-    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
-    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
-  }
-
-  .btn-primary {
-    @apply bg-gold-600 text-gray-900 hover:bg-gold-500;
-    @apply focus:ring-gold-500;
-  }
-
-  .btn-secondary {
-    @apply bg-gray-700 text-gray-100 hover:bg-gray-600;
-    @apply focus:ring-gray-500;
-  }
-
-  .btn-danger {
-    @apply bg-red-600 text-white hover:bg-red-500;
-    @apply focus:ring-red-500;
-  }
-
-  /* Input */
-  .input {
-    @apply w-full px-4 py-2 rounded-lg;
-    @apply bg-gray-800 border border-gray-700 text-gray-100;
-    @apply focus:outline-none focus:border-gold-500 focus:ring-1 focus:ring-gold-500;
-    @apply placeholder:text-gray-500;
-  }
-
-  /* Select */
-  .select {
-    @apply input cursor-pointer;
-  }
-
-  /* Card */
-  .card {
-    @apply bg-gray-900 border border-gray-800 rounded-lg p-6 shadow-lg;
-  }
-
-  /* Badge */
-  .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-  }
-
-  .badge-positive {
-    @apply bg-green-900/30 text-green-400 border border-green-800;
-  }
-
-  .badge-negative {
-    @apply bg-red-900/30 text-red-400 border border-red-800;
-  }
-
-  .badge-neutral {
-    @apply bg-gray-800 text-gray-300 border border-gray-700;
-  }
-
-  /* Loading Skeleton */
+  /* Elite Loading States */
   .skeleton {
-    @apply animate-pulse bg-gray-800 rounded;
+    @apply animate-pulse bg-gray-700/50 rounded;
+  }
+
+  .shimmer {
+    @apply relative overflow-hidden;
+  }
+
+  .shimmer::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full;
+    @apply bg-gradient-to-r from-transparent via-white/10 to-transparent;
+    @apply animate-shimmer;
+  }
+
+  /* Elite Animations */
+  .animate-in {
+    @apply animate-fade-in-up;
+  }
+
+  .animate-out {
+    @apply animate-fade-in-down;
+  }
+
+  /* Elite Gradient Utilities */
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-400 to-secondary-400 bg-clip-text text-transparent;
+  }
+
+  .gradient-border {
+    @apply relative;
+  }
+
+  .gradient-border::before {
+    content: '';
+    @apply absolute inset-0 rounded-2xl p-[2px] bg-gradient-to-r from-primary-500 to-secondary-500;
+    @apply -z-10;
+  }
+
+  .gradient-border > * {
+    @apply relative rounded-2xl bg-background;
+  }
+
+  /* Elite Status Indicators */
+  .status-indicator {
+    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium;
+  }
+
+  .status-success {
+    @apply bg-success-500/10 text-success-400 border border-success-500/20;
+  }
+
+  .status-warning {
+    @apply bg-warning-500/10 text-warning-400 border border-warning-500/20;
+  }
+
+  .status-error {
+    @apply bg-error-500/10 text-error-400 border border-error-500/20;
+  }
+
+  .status-info {
+    @apply bg-primary-500/10 text-primary-400 border border-primary-500/20;
+  }
+
+  /* Elite Tooltips */
+  .tooltip {
+    @apply relative inline-block;
+  }
+
+  .tooltip-content {
+    @apply absolute z-50 overflow-hidden rounded-lg border bg-popover px-3 py-1.5 text-sm text-popover-foreground;
+    @apply shadow-md animate-fade-in;
+  }
+
+  /* Elite Progress Bars */
+  .progress {
+    @apply relative h-2 w-full overflow-hidden rounded-full bg-secondary;
+  }
+
+  .progress-indicator {
+    @apply h-full w-full flex-1 bg-gradient-to-r from-primary to-secondary;
+    @apply transition-all duration-500 ease-in-out;
+  }
+
+  /* Elite Tabs */
+  .tabs-list {
+    @apply inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground;
+  }
+
+  .tabs-trigger {
+    @apply inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5;
+    @apply text-sm font-medium ring-offset-background transition-all;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring;
+    @apply focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+    @apply data-[state=active]:bg-background data-[state=active]:text-foreground;
+    @apply data-[state=active]:shadow-sm;
+  }
+
+  .tabs-content {
+    @apply mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2;
+    @apply focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+
+  /* Elite Navigation */
+  .nav-link {
+    @apply flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium;
+    @apply transition-all duration-200 hover:bg-accent hover:text-accent-foreground;
+    @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+  }
+
+  .nav-link.active {
+    @apply bg-accent text-accent-foreground;
+  }
+
+  /* Elite Dialogs */
+  .dialog-overlay {
+    @apply fixed inset-0 z-50 bg-background/80 backdrop-blur-sm;
+    @apply data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-in;
+  }
+
+  .dialog-content {
+    @apply fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%];
+    @apply gap-4 border bg-background p-6 shadow-lg duration-200;
+    @apply data-[state=open]:animate-scale-in data-[state=closed]:animate-scale-out;
+    @apply sm:rounded-lg;
+  }
+
+  .dialog-header {
+    @apply flex flex-col space-y-1.5 text-center sm:text-left;
+  }
+
+  .dialog-footer {
+    @apply flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2;
+  }
+
+  .dialog-title {
+    @apply text-lg font-semibold leading-none tracking-tight;
+  }
+
+  .dialog-description {
+    @apply text-sm text-muted-foreground;
   }
 }
-
-/* Scrollbar Styling */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  @apply bg-gray-900;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply bg-gray-700 rounded-full;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-600;
-}
-

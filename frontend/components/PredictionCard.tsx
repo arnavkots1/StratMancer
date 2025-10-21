@@ -172,7 +172,7 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
       <div className="pt-6 border-t border-gray-800">
         <div className="flex items-center justify-between text-xs text-gray-500">
           <span>Model: {model_version}</span>
-          <span>Predicted: {new Date().toLocaleTimeString()}</span>
+          <span>Predicted: Just now</span>
         </div>
       </div>
     </div>

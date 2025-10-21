@@ -25,7 +25,7 @@ export default function MetaOverview({
 }: MetaOverviewProps) {
   const availablePatches = meta?.available_patches ?? [];
   const topChampions = meta?.champions.slice(0, 3) ?? [];
-  const lastUpdated = meta ? new Date(meta.last_updated).toLocaleString() : '--';
+  const lastUpdated = meta ? new Date(meta.last_updated).toLocaleDateString() : '--';
 
   return (
     <section className="rounded-3xl bg-white/10 p-6 shadow-xl shadow-blue-900/20 backdrop-blur">
