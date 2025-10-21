@@ -7,6 +7,7 @@ import RoleSlots from '@/components/RoleSlots';
 import PredictionCard from '@/components/PredictionCard';
 import RecommendationCard from '@/components/RecommendationCard';
 import AnalysisPanel from '@/components/AnalysisPanel';
+import EloSelector, { type EloGroup } from '@/components/EloSelector';
 import { api } from '@/lib/api';
 import { getChampionImageUrl } from '@/lib/championImages';
 import type { 
@@ -440,6 +441,38 @@ export default function DraftPage() {
               </p>
             </div>
             <div className="flex items-center gap-4">
+              {/* ELO Selector */}
+              <div className="w-64">
+                <EloSelector
+                  value={draftState.elo as EloGroup}
+                  onChange={async (elo) => {
+                    console.log(`🔄 ELO changed to: ${elo.toUpperCase()}`);
+                    
+                    setDraftState(prev => ({ ...prev, elo: elo as Elo }));
+                    
+                    // Clear all cached state when switching ELO to force fresh predictions
+                    setPrediction(null);
+                    setAnalysis(null);
+                    setRecommendations(null);
+                    setError(null);
+                    setRecommendationError(null);
+                    setShowRecommendations(false);
+                    setShowAnalysis(false);
+                    
+                    // Request backend to clear context cache for this ELO
+                    try {
+                      await api.refreshContext(elo);
+                      console.log(`✅ Backend context refreshed for ${elo.toUpperCase()}`);
+                    } catch (err) {
+                      console.warn('⚠️ Failed to refresh backend context:', err);
+                      // Non-critical error, continue anyway
+                    }
+                    
+                    console.log('✅ All cached predictions and recommendations cleared');
+                  }}
+                />
+              </div>
+              
               {/* Start Draft */}
               <button
                 className={`btn ${draftStarted ? 'btn-secondary' : 'btn-primary'}`}
@@ -764,6 +797,22 @@ export default function DraftPage() {
         {/* Prediction Results */}
         {prediction && (
           <div className="mb-6">
+            {/* Model Indicator */}
+            <div className="mb-4 p-3 bg-gray-800 rounded-lg border border-gray-700">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-blue-400" />
+                  <span className="text-sm font-medium text-gray-300">
+                    Active Model: {draftState.elo.toUpperCase()} ELO
+                  </span>
+                </div>
+                <div className="text-xs text-gray-500">
+                  {draftState.elo === 'low' && 'Iron, Bronze, Silver'}
+                  {draftState.elo === 'mid' && 'Gold, Platinum, Emerald'}
+                  {draftState.elo === 'high' && 'Diamond, Master, GM, Challenger'}
+                </div>
+              </div>
+            </div>
             <PredictionCard prediction={prediction} />
           </div>
         )}

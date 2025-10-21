@@ -424,14 +424,15 @@ def expected_calibration_error(
 BASE_XGB_PARAMS = {
     "objective": "binary:logistic",
     "eval_metric": "logloss",
-    "n_estimators": 1500,
-    "subsample": 0.8,
-    "colsample_bytree": 0.8,
-    "learning_rate": 0.075,
-    "max_depth": 6,
-    "min_child_weight": 6,
-    "gamma": 0.0,
-    "reg_lambda": 1.0,
+    "n_estimators": 500,  # REDUCED: Fewer trees to prevent overfitting
+    "subsample": 0.7,  # REDUCED: Use less data per tree
+    "colsample_bytree": 0.6,  # REDUCED: Use less features per tree
+    "learning_rate": 0.05,  # REDUCED: Slower learning
+    "max_depth": 4,  # REDUCED: Shallower trees
+    "min_child_weight": 10,  # INCREASED: Require more samples per leaf
+    "gamma": 0.5,  # INCREASED: Stronger pruning
+    "reg_lambda": 10.0,  # INCREASED: L2 regularization (was 1.0, now 10x stronger)
+    "reg_alpha": 5.0,  # NEW: L1 regularization for feature selection
     "random_state": 42,
     "verbosity": 0,
     "n_jobs": -1,
@@ -440,8 +441,16 @@ BASE_XGB_PARAMS = {
 
 
 def _build_param_grid() -> List[Dict[str, float]]:
+    """Build grid with strong regularization to prevent overfitting."""
     grid = []
-    for combo in product([4, 5, 6], [4, 6, 8], [0.7, 0.8, 0.9], [0.6, 0.7, 0.8], [0.05, 0.075, 0.1]):
+    # Focus on shallower trees and stronger regularization
+    for combo in product(
+        [3, 4, 5],  # max_depth: shallower trees
+        [8, 10, 12],  # min_child_weight: more samples per leaf
+        [0.6, 0.7],  # subsample: use less data
+        [0.5, 0.6],  # colsample: use less features
+        [0.03, 0.05]  # learning_rate: slower learning
+    ):
         max_depth, min_child_weight, subsample, colsample, eta = combo
         grid.append(
             {
@@ -450,6 +459,8 @@ def _build_param_grid() -> List[Dict[str, float]]:
                 "subsample": subsample,
                 "colsample_bytree": colsample,
                 "learning_rate": eta,
+                "reg_lambda": 10.0,  # Strong L2 regularization
+                "reg_alpha": 5.0,  # Strong L1 regularization
             }
         )
     max_combos = 60

@@ -4,6 +4,7 @@ Inference service - loads models and makes predictions
 
 import logging
 import sys
+from dataclasses import fields as dataclass_fields
 from pathlib import Path
 from typing import Dict, Optional, Tuple, Any
 
@@ -12,7 +13,12 @@ import numpy as np
 # Add project root to path
 sys.path.insert(0, '.')
 
-from ml_pipeline.features import load_feature_map, assemble_features
+from ml_pipeline.features import (
+    load_feature_map,
+    assemble_features,
+    FeatureContext,
+    FeatureFlags,
+)
 from ml_pipeline.features.history_index import HistoryIndex
 from ml_pipeline.models.predict import load_model as load_ml_model, predict_raw_and_calibrated
 
@@ -29,6 +35,7 @@ class InferenceService:
         self.history_index: Optional[HistoryIndex] = None
         self.models: Dict[str, Tuple[Any, Any, str, Dict]] = {}  # elo -> (model, calibrator, method, modelcard)
         self._initialized = False
+        self._feature_contexts: Dict[str, FeatureContext] = {}
     
     def initialize(self):
         """Lazy initialization of models and resources"""
@@ -71,7 +78,7 @@ class InferenceService:
         """Load model for specific ELO (lazy loading)"""
         if not self._initialized:
             self.initialize()
-        
+
         if elo in self.models:
             return self.models[elo]
         
@@ -82,9 +89,12 @@ class InferenceService:
                 elo_group=elo,
                 model_dir=settings.MODEL_DIR
             )
+            self._ensure_feature_context(elo, modelcard)
             
             self.models[elo] = (model, calibrator, calibrator_method, modelcard)
             logger.info(f"Model loaded for {elo}: {modelcard.get('model_type', 'unknown')}")
+            logger.info(f"Model card features: {modelcard.get('features')}, mode: {modelcard.get('feature_mode')}")
+            logger.info(f"Model card flags: {modelcard.get('feature_flags')}")
             
             return model, calibrator, calibrator_method, modelcard
         
@@ -94,6 +104,69 @@ class InferenceService:
         except Exception as e:
             logger.error(f"Failed to load model for {elo}: {e}")
             raise
+
+    def _ensure_feature_context(self, elo: str, modelcard: Dict, force_rebuild: bool = False) -> FeatureContext:
+        """Create or update feature context for an ELO based on model metadata.
+        
+        Args:
+            elo: ELO group (low, mid, high)
+            modelcard: Model metadata dictionary
+            force_rebuild: If True, always rebuild context even if cached
+        """
+        if not self.feature_map:
+            raise RuntimeError("Feature map must be loaded before building feature context.")
+
+        model_feature_mode = modelcard.get('feature_mode', 'basic')
+        flags_dict = modelcard.get('feature_flags', {})
+        assets_dir = modelcard.get('assets_dir') or 'data/assets'
+
+        # Check if we should rebuild (force_rebuild or context doesn't exist)
+        context = self._feature_contexts.get(elo)
+        should_rebuild = force_rebuild or context is None or context.mode != model_feature_mode
+        
+        if should_rebuild:
+            logger.info(f"{'Force ' if force_rebuild else ''}Rebuilding feature context for {elo}: mode={model_feature_mode}, flags={flags_dict}")
+            
+            default_flags = FeatureFlags()
+            default_flag_values = {field.name: getattr(default_flags, field.name) for field in dataclass_fields(FeatureFlags)}
+            flag_kwargs = {
+                name: bool(flags_dict.get(name, default_flag_values[name]))
+                for name in default_flag_values
+            }
+            flags = FeatureFlags(**flag_kwargs)
+
+            context = FeatureContext(
+                feature_map=self.feature_map,
+                mode=model_feature_mode,
+                elo_group=elo,
+                assets_dir=assets_dir,
+                flags=flags,
+            )
+            embedding_dim_hint = modelcard.get('embedding_dim')
+            if embedding_dim_hint is not None:
+                context.embedding_dim_hint = int(embedding_dim_hint)
+            
+            self._feature_contexts[elo] = context
+            logger.info(f"✅ Feature context ready for {elo}: mode={context.mode}, {len(context.flags.__dict__)} flags set")
+
+        return context
+
+    def _get_feature_context(self, elo: str) -> Optional[FeatureContext]:
+        return self._feature_contexts.get(elo)
+    
+    def clear_context_cache(self, elo: Optional[str] = None):
+        """Clear cached feature contexts to force rebuild.
+        
+        Args:
+            elo: If provided, clear only this ELO's context. Otherwise clear all.
+        """
+        if elo:
+            if elo in self._feature_contexts:
+                logger.info(f"🗑️ Clearing cached context for {elo}")
+                del self._feature_contexts[elo]
+        else:
+            logger.info(f"🗑️ Clearing all cached contexts ({len(self._feature_contexts)} entries)")
+            self._feature_contexts.clear()
     
     def predict_draft(
         self,
@@ -126,32 +199,71 @@ class InferenceService:
         model, calibrator, calibrator_method, modelcard = self.load_elo_model(elo)
         model_type = modelcard.get('model_type', 'xgb')
         
+        # Ensure feature context is created with correct model card metadata
+        context = self._ensure_feature_context(elo, modelcard)
+        
         # Create match-like dictionary for feature assembly
         # Convert positional arrays to champion ID lists (same format as training data)
-        blue_pick_list = [champ_id for champ_id in blue_picks if champ_id != -1]
-        red_pick_list = [champ_id for champ_id in red_picks if champ_id != -1]
+        def _normalize_pick(value: Any) -> int:
+            if value is None:
+                return -1
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                return -1
+
+        blue_pick_list = [_normalize_pick(champ_id) for champ_id in blue_picks]
+        red_pick_list = [_normalize_pick(champ_id) for champ_id in red_picks]
+        if len(blue_pick_list) < 5:
+            blue_pick_list.extend([-1] * (5 - len(blue_pick_list)))
+        if len(red_pick_list) < 5:
+            red_pick_list.extend([-1] * (5 - len(red_pick_list)))
         
+        blue_bans_norm = [_normalize_pick(ban) for ban in blue_bans]
+        red_bans_norm = [_normalize_pick(ban) for ban in red_bans]
+
         match_data = {
             'match_id': 'api_request',
             'patch': patch,
             'elo_rank': elo.upper(),
             'blue_picks': blue_pick_list,  # Use champion ID list, not positional array
             'red_picks': red_pick_list,    # Use champion ID list, not positional array
-            'blue_bans': blue_bans + [-1] * (5 - len(blue_bans)),  # Pad to 5
-            'red_bans': red_bans + [-1] * (5 - len(red_bans)),  # Pad to 5
+            'blue_bans': blue_bans_norm + [-1] * (5 - len(blue_bans_norm)),  # Pad to 5
+            'red_bans': red_bans_norm + [-1] * (5 - len(red_bans_norm)),  # Pad to 5
             'blue_win': None,  # Unknown
             'champion_stats': [],  # Not needed for prediction
             'derived_features': {}  # Will be computed
         }
         
-        # Assemble features
+        # Assemble features - FIX CONTEXT CREATION
         try:
+            # Create a proper feature context that matches the model's training
+            if context is None:
+                # Fallback: create context manually to match model card
+                feature_flags = FeatureFlags(
+                    use_embeddings=True,
+                    use_matchups=True, 
+                    use_synergy=True,
+                    ban_context=True,
+                    pick_order=False
+                )
+                context = FeatureContext(
+                    feature_map=self.feature_map,
+                    mode="rich",
+                    elo_group=elo,
+                    assets_dir="data/assets",
+                    flags=feature_flags
+                )
+                logger.info(f"Created fallback context: mode={context.mode}, flags={context.flags.__dict__}")
+            
             X, named = assemble_features(
                 match_data,
                 elo.upper(),
                 self.feature_map,
-                self.history_index
+                self.history_index,
+                context=context
             )
+            logger.info(f"Feature vector shape: {X.shape}, expected: 3410, blue_picks: {blue_pick_list}, red_picks: {red_pick_list}")
         except Exception as e:
             logger.error(f"Feature assembly failed: {e}")
             raise ValueError(f"Failed to assemble features: {str(e)}")
@@ -166,13 +278,60 @@ class InferenceService:
         )
         raw_prob = float(np.clip(raw_prob[0], 0.0, 1.0))
         calibrated_prob = float(np.clip(calibrated_prob[0], 0.0, 1.0))
-        selected_prob = calibrated_prob if calibrated_for_ui else raw_prob
         
-        # Calculate confidence (inverse entropy)
-        probs = np.array([1 - selected_prob, selected_prob])
-        probs = np.clip(probs, 1e-10, 1 - 1e-10)
-        entropy = -np.sum(probs * np.log2(probs))
-        confidence = float(1.0 - (entropy / 1.0))  # Normalize by max entropy
+        # DEBUG: Log the raw model output to understand what's happening
+        logger.info(f"MODEL DEBUG: Raw prob={raw_prob:.6f}, Calibrated prob={calibrated_prob:.6f}, Model type={model_type}")
+
+        filled_slots = sum(1 for cid in blue_pick_list if cid not in (-1, None)) + \
+                       sum(1 for cid in red_pick_list if cid not in (-1, None))
+        info_ratio = max(0.0, min(filled_slots / 10.0, 1.0))
+        
+        # More conservative shrinking to prevent extreme predictions
+        # Even with complete drafts, we don't trust the model 100%
+        base_shrink = 0.35  # minimum shrink toward neutral (was 0.25)
+        dynamic_shrink = info_ratio * 0.35  # reduced from 0.5 to be less aggressive
+        shrink_factor = min(base_shrink + dynamic_shrink, 0.70)  # cap at 70% (was 75%)
+
+        def _shrink(prob: float, factor: float) -> float:
+            return float(0.5 + (prob - 0.5) * factor)
+
+        adjusted_raw = _shrink(raw_prob, shrink_factor)
+        adjusted_calibrated = _shrink(calibrated_prob, shrink_factor)
+        
+        # Additional safety caps to prevent extreme predictions
+        # Apply to ALL drafts (including complete ones) to handle overfitted models
+        if filled_slots < 8:
+            # Incomplete drafts: very conservative
+            adjusted_raw = max(0.20, min(0.80, adjusted_raw))
+            adjusted_calibrated = max(0.20, min(0.80, adjusted_calibrated))
+        else:
+            # Complete drafts: still apply safety caps but allow more variation
+            adjusted_raw = max(0.15, min(0.85, adjusted_raw))
+            adjusted_calibrated = max(0.15, min(0.85, adjusted_calibrated))
+
+        selected_prob = adjusted_calibrated if calibrated_for_ui else adjusted_raw
+        
+        logger.debug(
+            "Raw: %.4f, Calibrated: %.4f, Selected: %.4f, Filled slots: %s, Info ratio: %.2f, Shrink: %.3f",
+            raw_prob,
+            calibrated_prob,
+            selected_prob,
+            filled_slots,
+            info_ratio,
+            shrink_factor,
+        )
+        
+        # Calculate confidence using standard formula: |p - 0.5| * 200
+        # This gives 0% for 50/50 and 100% for 100/0
+        confidence = float(abs(selected_prob - 0.5) * 200)
+        
+        # For complete drafts, boost confidence slightly to reflect model certainty
+        if filled_slots >= 10:  # Complete draft
+            confidence = min(confidence * 1.2, 100.0)  # 20% boost, cap at 100%
+        
+        # DEBUG: Log confidence calculation details
+        logger.info(f"CONFIDENCE DEBUG: selected_prob={selected_prob:.4f}, confidence={confidence:.4f}%")
+        logger.info(f"CONFIDENCE DEBUG: filled_slots={filled_slots}, complete_draft_boost={filled_slots >= 10}")
         
         # Generate simple explanations based on composition features
         explanations = self._generate_explanations(named, selected_prob)
@@ -188,9 +347,15 @@ class InferenceService:
             'model_version': f"{elo}-{model_type}-{modelcard.get('timestamp', 'unknown')[:8]}",
             'elo_group': elo,
             'patch': patch,
-            'blue_win_prob_raw': raw_prob,
-            'blue_win_prob_calibrated': calibrated_prob,
+            'blue_win_prob_raw': adjusted_raw,
+            'blue_win_prob_calibrated': adjusted_calibrated,
             'calibration_method': calibrator_method,
+            'feature_context': {
+                'mode': context.mode if context else 'basic',
+                'flags': context.flags.__dict__ if context else {},
+                'filled_slots': filled_slots,
+                'info_ratio': info_ratio,
+            },
         }
         
         return result

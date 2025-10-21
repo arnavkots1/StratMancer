@@ -4,6 +4,8 @@ Draft prediction endpoint
 
 import logging
 from fastapi import APIRouter, HTTPException, Depends, Request, Response
+from pydantic import BaseModel
+from typing import Optional
 
 from backend.api.schemas import PredictDraftRequest, PredictDraftResponse, ErrorResponse
 from backend.api.deps import verify_api_key, get_correlation_id, check_rate_limit
@@ -13,6 +15,18 @@ from backend.services.cache import cache_service
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/predict-draft", tags=["prediction"])
+
+
+class RefreshContextRequest(BaseModel):
+    """Request to refresh feature context cache"""
+    elo: Optional[str] = None  # If None, refresh all
+
+
+class RefreshContextResponse(BaseModel):
+    """Response from context refresh"""
+    success: bool
+    message: str
+    elo: Optional[str] = None
 
 
 @router.post(
@@ -101,7 +115,7 @@ async def predict_draft(
         # Cache the result
         await cache_service.set_prediction(request_data.dict(), result)
         
-        logger.info(f"[{correlation_id}] Prediction complete: Blue {result['blue_win_prob']:.2%}, Confidence {result['confidence']:.2%}")
+        logger.info(f"[{correlation_id}] Prediction complete: Blue {result['blue_win_prob']*100:.2f}%, Confidence {result['confidence']:.2f}%")
         
         return PredictDraftResponse(**result)
     
@@ -123,5 +137,61 @@ async def predict_draft(
                 correlation_id=correlation_id,
                 error_code="PREDICTION_ERROR"
             ).dict()
+        )
+
+
+@router.post(
+    "/refresh-context",
+    response_model=RefreshContextResponse,
+    responses={
+        401: {"model": ErrorResponse, "description": "Authentication required"},
+        400: {"model": ErrorResponse, "description": "Invalid request"},
+    }
+)
+async def refresh_context(
+    request_data: RefreshContextRequest,
+    request: Request,
+    api_key: str = Depends(verify_api_key)
+):
+    """
+    Refresh the feature context cache to force fresh predictions.
+    
+    Use this when switching between ELO groups to ensure the correct
+    model and feature configuration is used.
+    
+    **Authentication Required:** X-STRATMANCER-KEY header
+    """
+    correlation_id = get_correlation_id(request)
+    
+    try:
+        elo = request_data.elo
+        if elo:
+            # Validate ELO
+            if elo not in ['low', 'mid', 'high']:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid ELO group: {elo}. Must be one of: low, mid, high"
+                )
+            logger.info(f"[{correlation_id}] Refreshing context for {elo} ELO")
+            inference_service.clear_context_cache(elo)
+            message = f"Context refreshed for {elo} ELO"
+        else:
+            logger.info(f"[{correlation_id}] Refreshing all contexts")
+            inference_service.clear_context_cache()
+            message = "All contexts refreshed"
+        
+        return RefreshContextResponse(
+            success=True,
+            message=message,
+            elo=elo
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[{correlation_id}] Error refreshing context: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to refresh context: {str(e)}"
         )
 

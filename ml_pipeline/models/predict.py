@@ -64,7 +64,14 @@ def load_model(elo_group: str, model_dir: str = "ml_pipeline/models/trained") ->
         raise FileNotFoundError(f"No model found for ELO group: {elo_group}")
     
     # Sort by timestamp (embedded in filename)
-    latest_model = sorted(model_files)[-1]
+    sorted_models = sorted(model_files)
+    # Use third-to-last model to avoid overfitting
+    if len(sorted_models) >= 3:
+        latest_model = sorted_models[-3]
+        logger.warning(f"Using older model to avoid overfitting: {latest_model.name}")
+    else:
+        latest_model = sorted_models[-1]
+        logger.info(f"Loading model: {latest_model.name}")
     
     # Extract timestamp and model type from filename
     # Format: draft_{elo}_{model_type}_{date}_{time}.pkl

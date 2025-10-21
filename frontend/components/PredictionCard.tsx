@@ -25,7 +25,7 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
     ? Math.round((red_win_prob as number) * 100)
     : 100 - blueWinRate;
   const confidencePercent = Number.isFinite(confidence)
-    ? Math.round((confidence as number) * 100)
+    ? Math.round(confidence as number)
     : 0;
 
   // Normalize explanations from backend (may be strings). Drop zero-impact noise.

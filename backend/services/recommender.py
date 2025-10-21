@@ -16,12 +16,13 @@ from backend.config import settings
 logger = logging.getLogger(__name__)
 
 
-# ELO skill cap adjustments
-ELO_SKILL_WEIGHTS = {
-    'low': -0.3,   # Low elo: penalize mechanically complex champions
-    'mid': 0.0,    # Mid elo: neutral
-    'high': 0.2,   # High elo: reward high skill cap champions
-}
+# ELO skill cap adjustments - REMOVED
+# The model should learn ELO differences from training data, not hardcoded assumptions
+# ELO_SKILL_WEIGHTS = {
+#     'low': -0.8,   # Low elo: strongly penalize mechanically complex champions
+#     'mid': 0.0,    # Mid elo: neutral
+#     'high': 0.6,   # High elo: strongly reward high skill cap champions
+# }
 
 
 class RecommenderService:
@@ -71,16 +72,22 @@ class RecommenderService:
         # Blue team picks
         for role in ['top', 'jgl', 'mid', 'adc', 'sup']:
             champ_id = draft['blue'].get(role)
-            # Check for valid champion ID (not None, not -1, not 0, not undefined)
-            if champ_id and champ_id != -1:
-                picked.add(champ_id)
+            if champ_id is None or champ_id == -1 or champ_id == 0:
+                continue
+            try:
+                picked.add(int(champ_id))
+            except (TypeError, ValueError):
+                logger.warning(f"Invalid blue pick ID: {champ_id}")
         
         # Red team picks
         for role in ['top', 'jgl', 'mid', 'adc', 'sup']:
             champ_id = draft['red'].get(role)
-            # Check for valid champion ID (not None, not -1, not 0, not undefined)
-            if champ_id and champ_id != -1:
-                picked.add(champ_id)
+            if champ_id is None or champ_id == -1 or champ_id == 0:
+                continue
+            try:
+                picked.add(int(champ_id))
+            except (TypeError, ValueError):
+                logger.warning(f"Invalid red pick ID: {champ_id}")
         
         # Bans - ensure they are integers
         blue_bans = draft['blue'].get('bans', [])
@@ -142,12 +149,28 @@ class RecommenderService:
     ) -> float:
         """Get current draft win probability (blue team perspective)"""
         try:
-            # Use the role-aware prediction method for partial drafts
-            result = inference_service.predict_draft_with_roles(
+            # Convert role-based draft to positional arrays (same as _simulate_pick)
+            role_order = ['top', 'jgl', 'mid', 'adc', 'sup']
+            
+            blue_picks = []
+            red_picks = []
+            
+            for role in role_order:
+                blue_champ = draft['blue'].get(role)
+                red_champ = draft['red'].get(role)
+                
+                # Convert None to -1, keep existing values
+                blue_picks.append(blue_champ if blue_champ is not None else -1)
+                red_picks.append(red_champ if red_champ is not None else -1)
+            
+            # Use the main predict_draft method directly (consistent with _simulate_pick)
+            result = inference_service.predict_draft(
                 elo=elo,
                 patch=patch,
-                blue_draft=draft['blue'],
-                red_draft=draft['red'],
+                blue_picks=blue_picks,
+                red_picks=red_picks,
+                blue_bans=draft['blue'].get('bans', []),
+                red_bans=draft['red'].get('bans', []),
                 calibrated_for_ui=False,
             )
             return result.get('blue_win_prob_raw', result['blue_win_prob'])
@@ -404,12 +427,10 @@ class RecommenderService:
                 if is_empty_draft:
                     # For empty drafts, use champion strength as proxy
                     skill_cap = self._get_champion_skill_cap(champ_id)
-                    elo_weight = ELO_SKILL_WEIGHTS.get(elo, 0.0)
                     
-                    # Base strength from skill cap and role suitability
-                    base_strength = skill_cap * 0.1  # 0-0.1 range
-                    elo_adjustment = elo_weight * skill_cap / 10.0  # Smaller adjustment
-                    adjusted_gain = base_strength + elo_adjustment
+                    # Use pure model predictions - no hardcoded ELO adjustments
+                    # The model should learn ELO differences from training data
+                    adjusted_gain = skill_cap * 0.1  # Simple baseline, model will learn the rest
                     
                     # Add some randomness to differentiate champions
                     import random
@@ -429,10 +450,9 @@ class RecommenderService:
                         champ_name = self._get_champion_name(champ_id)
                         logger.info(f"Champion {champ_name} (ID {champ_id}): baseline={baseline:.4f}, new_prob={new_prob:.4f}, win_gain={win_gain:.4f}")
                     
-                    # Apply ELO skill cap adjustment
-                    skill_cap = self._get_champion_skill_cap(champ_id)
-                    elo_weight = ELO_SKILL_WEIGHTS.get(elo, 0.0)
-                    adjusted_gain = win_gain + (elo_weight * skill_cap / 3.0)
+                    # Use pure model predictions - no hardcoded ELO adjustments
+                    # The model should learn ELO differences from training data
+                    adjusted_gain = win_gain
                 
                 # Get champion info
                 champ_name = self._get_champion_name(champ_id)
@@ -566,12 +586,10 @@ class RecommenderService:
                 if is_empty_draft:
                     # For empty drafts, use champion strength as proxy for threat
                     skill_cap = self._get_champion_skill_cap(champ_id)
-                    elo_weight = ELO_SKILL_WEIGHTS.get(elo, 0.0)
                     
-                    # Base threat from skill cap (higher skill cap = more dangerous)
-                    base_threat = skill_cap * 0.08  # 0-0.08 range
-                    elo_adjustment = elo_weight * skill_cap / 15.0  # Smaller adjustment
-                    threat = base_threat + elo_adjustment
+                    # Use pure model predictions - no hardcoded ELO adjustments
+                    # The model should learn ELO differences from training data
+                    threat = skill_cap * 0.08  # Simple baseline, model will learn the rest
                     
                     # Add some randomness to differentiate champions
                     import random
@@ -584,12 +602,10 @@ class RecommenderService:
                     # skill cap as a proxy until the model is retrained with better data
                     
                     skill_cap = self._get_champion_skill_cap(champ_id)
-                    elo_weight = ELO_SKILL_WEIGHTS.get(elo, 0.0)
                     
-                    # Base threat from skill cap (higher skill cap = more dangerous)
-                    base_threat = skill_cap * 0.07  # 0-0.07 range for non-empty drafts
-                    elo_adjustment = elo_weight * skill_cap / 18.0
-                    threat = base_threat + elo_adjustment
+                    # Use pure model predictions - no hardcoded ELO adjustments
+                    # The model should learn ELO differences from training data
+                    threat = skill_cap * 0.07  # Simple baseline, model will learn the rest
                     
                     # Add some randomness to differentiate champions
                     import random

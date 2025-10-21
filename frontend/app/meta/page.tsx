@@ -25,8 +25,11 @@ export default function MetaPage() {
     let cancelled = false;
     setMetaLoading(true);
 
-    api
-      .fetchMeta(selectedElo, selectedPatch)
+    const metaPromise = selectedPatch 
+      ? api.getMetaForPatch(selectedElo, selectedPatch)
+      : api.getMetaOverview(selectedElo);
+    
+    metaPromise
       .then(data => {
         if (cancelled) return;
         setMeta(data);
@@ -56,7 +59,7 @@ export default function MetaPage() {
     setTrendsLoading(true);
 
     api
-      .fetchTrends(selectedElo)
+      .getMetaTrends(selectedElo)
       .then(data => {
         if (cancelled) return;
         setTrends(data);
