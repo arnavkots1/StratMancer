@@ -7,26 +7,13 @@ import { AnimatePresence, m, useReducedMotion } from "framer-motion"
 import { ArrowUpRight, Sparkles, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Container } from "@/components/Section"
-import { HologramParticles } from "@/components/HologramParticles"
 import { fadeUp, hologramRotate, particleDrift, scaleIn, stagger } from "@/lib/motion"
-
-const CHAMPIONS = [
-  {
-    name: "Ahri",
-    role: "Mid Mage",
-    image: "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Ahri_0.jpg",
-  },
-  {
-    name: "Lee Sin",
-    role: "Jungle Assassin",
-    image: "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/LeeSin_0.jpg",
-  },
-  {
-    name: "Jinx",
-    role: "Bot Marksman",
-    image: "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Jinx_0.jpg",
-  },
-] as const
+import {
+  getFavorPercentage,
+  getLandingData,
+  type RealMetrics,
+  type ChampionStats,
+} from "@/lib/realData"
 
 const HIGHLIGHTS = [
   "Predict every phase of the draft with live win probabilities.",
@@ -35,30 +22,96 @@ const HIGHLIGHTS = [
   "Trust recommendations sourced from millions of curated matches.",
 ] as const
 
-const METRICS = [
-  { label: "Average Win Delta", value: "+8.4%", tone: "text-emerald-300" },
-  { label: "Model Confidence", value: "94.2%", tone: "text-sky-300" },
-  { label: "Response Time", value: "180ms", tone: "text-amber-300" },
-] as const
-
 export function Hero() {
   const [championIndex, setChampionIndex] = useState(0)
+  const [champions, setChampions] = useState<ChampionStats[]>([])
+  const [metrics, setMetrics] = useState<RealMetrics | null>(null)
+  const [loading, setLoading] = useState(true)
   const reduceMotion = useReducedMotion()
-  const activeChampion = CHAMPIONS[championIndex]
+  
+  const activeChampion = champions[championIndex] || {
+    name: "Ahri",
+    role: "Mid Mage",
+    winRate: 52.3,
+    pickRate: 8.7,
+    banRate: 12.4,
+    image: "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Ahri_0.jpg"
+  }
+
+  // Load real data on mount and refresh periodically
+  useEffect(() => {
+    const controller = new AbortController()
+
+    const loadData = async (forceRefresh = false) => {
+      try {
+        const data = await getLandingData({ signal: controller.signal, forceRefresh })
+        setChampions(data.champions)
+        setMetrics(data.metrics)
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          console.error("Failed to load landing data:", error)
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadData()
+
+    // Refresh data every 10 seconds
+    const refreshInterval = setInterval(() => {
+      loadData(true)
+    }, 10000)
+
+    return () => {
+      controller.abort()
+      clearInterval(refreshInterval)
+    }
+  }, [])
 
   useEffect(() => {
-    if (reduceMotion) return
+    if (reduceMotion || champions.length === 0) return
     const interval = window.setInterval(() => {
-      setChampionIndex((index) => (index + 1) % CHAMPIONS.length)
-    }, 9000)
+      setChampionIndex((index) => (index + 1) % champions.length)
+    }, 6000) // Set to 6 seconds per champion (at least 5 seconds as requested)
 
     return () => window.clearInterval(interval)
-  }, [reduceMotion])
+  }, [reduceMotion, champions.length])
 
   const hologramKey = useMemo(
     () => `${activeChampion.name}-${championIndex}`,
     [activeChampion.name, championIndex],
   )
+
+  // Create metrics array from real data
+  const realMetrics = useMemo(() => {
+    if (!metrics)
+      return [
+        { label: "Average Win Delta", value: "+4.4%", tone: "text-emerald-300" },
+        { label: "Model Confidence", value: "93.5%", tone: "text-sky-300" },
+        { label: "Response Time", value: "180ms", tone: "text-amber-300" },
+      ]
+
+    return [
+      {
+        label: "Average Win Delta",
+        value: `+${metrics.averageWinDelta.toFixed(1)}%`,
+        tone: "text-emerald-300",
+      },
+      {
+        label: "Model Confidence",
+        value: `${metrics.modelConfidence.toFixed(1)}%`,
+        tone: "text-sky-300",
+      },
+      {
+        label: "Response Time",
+        value: `${Math.round(metrics.responseTime)}ms`,
+        tone: "text-amber-300",
+      },
+    ]
+  }, [metrics])
+
+  const liveForecast = metrics?.liveWinForecast
 
   return (
     <section className="relative isolate overflow-hidden">
@@ -220,12 +273,23 @@ export function Hero() {
               variants={stagger}
               className="grid gap-5 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur sm:grid-cols-3"
             >
-              {METRICS.map((metric) => (
+              {realMetrics.map((metric) => (
                 <m.div key={metric.label} variants={fadeUp} className="space-y-2">
                   <dt className="text-xs uppercase tracking-[0.24em] text-white/40">
                     {metric.label}
                   </dt>
-                  <dd className={`text-2xl font-semibold ${metric.tone}`}>{metric.value}</dd>
+                  <dd className={`text-2xl font-semibold ${metric.tone}`}>
+                    {loading ? (
+                      <div className="h-8 w-16 animate-pulse bg-white/20 rounded" />
+                    ) : (
+                      metric.value
+                    )}
+                  </dd>
+                  {metric.label === "Model Confidence" && !loading && (
+                    <div className="text-xs text-white/50 mt-1">
+                  Low due to small dataset 
+                    </div>
+                  )}
                 </m.div>
               ))}
             </m.dl>
@@ -237,12 +301,9 @@ export function Hero() {
             variants={scaleIn}
             className="relative flex justify-center"
           >
-            <div className="relative w-full max-w-[460px] rounded-[calc(var(--radius)*1.1)] border border-white/15 bg-gradient-to-br from-white/10 via-white/5 to-white/0 p-6 shadow-[0_18px_60px_-28px_rgba(0,0,0,0.65)] backdrop-blur-xl">
+            <div className="relative w-full max-w-[460px] rounded-[calc(var(--radius)*1.1)] border border-white/15 bg-gradient-to-br from-white/15 via-white/10 to-transparent p-6 shadow-[0_18px_60px_-28px_rgba(0,0,0,0.65)]">
               <div className="absolute inset-0 neon-border opacity-70" />
-              <div className="relative overflow-hidden rounded-[calc(var(--radius)*0.9)] border border-white/10 bg-gradient-to-br from-[#1a2438]/85 via-[#0b101d]/90 to-[#060b14]/90">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(124,58,237,0.2),transparent_65%)] opacity-70" />
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0)_45%)]" />
-
+              <div className="relative overflow-hidden rounded-[calc(var(--radius)*0.9)] border border-white/10 bg-black/5">
                 {reduceMotion ? (
                   <div className="relative aspect-[4/5] w-full">
                     <Image
@@ -251,7 +312,10 @@ export function Hero() {
                       fill
                       priority
                       sizes="(min-width: 1024px) 460px, 80vw"
-                      className="object-cover opacity-80 mix-blend-screen"
+                      className="object-cover object-top brightness-110"
+                      quality={100}
+                      loading="eager"
+                      unoptimized={false}
                     />
                   </div>
                 ) : (
@@ -270,9 +334,12 @@ export function Hero() {
                         fill
                         priority
                         sizes="(min-width: 1024px) 460px, 80vw"
-                        className="object-cover opacity-80 mix-blend-screen"
+                        className="object-cover object-center brightness-110"
+                        style={{ objectPosition: 'center 20%' }}
+                        quality={100}
+                        loading="eager"
+                        unoptimized={true}
                       />
-                      <div className="absolute inset-0 bg-[repeating-linear-gradient(180deg,rgba(124,58,237,0.15)_0px,rgba(124,58,237,0.15)_2px,transparent_2px,transparent_4px)] opacity-20 mix-blend-screen" />
                     </m.div>
                   </AnimatePresence>
                 )}
@@ -283,7 +350,7 @@ export function Hero() {
                     initial={{ opacity: 0, y: 24 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.4, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                    className="absolute inset-x-6 bottom-6 rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-xl"
+                    className="absolute inset-x-6 bottom-6 rounded-2xl border border-white/15 bg-black/40 p-4"
                   >
                     <div className="flex items-center justify-between text-xs uppercase tracking-[0.24em] text-white/50">
                       <span>Current Focus</span>
@@ -295,7 +362,11 @@ export function Hero() {
                         <p className="text-xs text-white/60">{activeChampion.role}</p>
                       </div>
                       <div className="rounded-lg border border-emerald-400/50 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-                        71% favor
+                        {loading ? (
+                          <div className="h-4 w-12 animate-pulse bg-emerald-400/20 rounded" />
+                        ) : (
+                          `${Math.round(getFavorPercentage(activeChampion.winRate))}% favor`
+                        )}
                       </div>
                     </div>
                   </m.div>
@@ -306,7 +377,7 @@ export function Hero() {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.8, duration: 0.6 }}
-                className="mt-6 rounded-2xl border border-white/10 bg-white/10 p-5 backdrop-blur"
+                className="mt-6 rounded-2xl border border-white/15 bg-black/40 p-5"
               >
                 <div className="flex items-center justify-between text-xs uppercase tracking-[0.24em] text-white/40">
                   <span>Live Win Probability</span>
@@ -315,15 +386,51 @@ export function Hero() {
                 <div className="mt-4 grid grid-cols-2 gap-4 text-sm text-white">
                   <div className="space-y-2">
                     <p className="text-white/60">Blue Side</p>
-                    <p className="text-2xl font-semibold text-emerald-300">56.8%</p>
-                    <p className="text-xs text-white/40">+3.1% synergy bonus</p>
+                    <p className="text-2xl font-semibold text-emerald-300">
+                      {loading || !liveForecast ? (
+                        <div className="h-8 w-16 animate-pulse bg-emerald-400/20 rounded" />
+                      ) : (
+                        `${liveForecast.blueWinRate.toFixed(1)}%`
+                      )}
+                    </p>
+                    <p className="text-xs text-white/40">
+                      {loading || !liveForecast ? (
+                        <div className="h-3 w-20 animate-pulse bg-white/20 rounded" />
+                      ) : (
+                        `${liveForecast.blueLift >= 0 ? "+" : ""}${liveForecast.blueLift.toFixed(1)}% vs 50% baseline`
+                      )}
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <p className="text-white/60">Red Side</p>
-                    <p className="text-2xl font-semibold text-rose-300">43.2%</p>
-                    <p className="text-xs text-white/40">Tilt risk detected</p>
+                    <p className="text-2xl font-semibold text-rose-300">
+                      {loading || !liveForecast ? (
+                        <div className="h-8 w-16 animate-pulse bg-rose-400/20 rounded" />
+                      ) : (
+                        `${liveForecast.redWinRate.toFixed(1)}%`
+                      )}
+                    </p>
+                    <p className="text-xs text-white/40">
+                      {loading || !liveForecast ? (
+                        <div className="h-3 w-20 animate-pulse bg-white/20 rounded" />
+                      ) : (
+                        liveForecast.blueLift > 0
+                          ? `-${liveForecast.blueLift.toFixed(1)}% gap to close`
+                          : liveForecast.blueLift < 0
+                            ? `+${Math.abs(liveForecast.blueLift).toFixed(1)}% edge this patch`
+                            : "Holding even footing this patch"
+                      )}
+                    </p>
                   </div>
                 </div>
+                {!loading && liveForecast && (
+                  <div className="mt-4 space-y-1 text-xs text-white/50">
+                    <p>{liveForecast.narrative}</p>
+                    <p className="text-white/40">
+                      Based on {liveForecast.sampleSize.toLocaleString()} analyzed drafts
+                    </p>
+                  </div>
+                )}
               </m.div>
             </div>
           </m.div>

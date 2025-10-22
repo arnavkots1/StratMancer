@@ -321,9 +321,9 @@ class InferenceService:
             shrink_factor,
         )
         
-        # Calculate confidence using standard formula: |p - 0.5| * 200
+        # Calculate confidence using standard formula: |p - 0.5| * 100
         # This gives 0% for 50/50 and 100% for 100/0
-        confidence = float(abs(selected_prob - 0.5) * 200)
+        confidence = float(abs(selected_prob - 0.5) * 100)
         
         # For complete drafts, boost confidence slightly to reflect model certainty
         if filled_slots >= 10:  # Complete draft

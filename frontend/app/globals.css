@@ -201,7 +201,12 @@
   }
   
   .glass-card {
-    @apply glass rounded-2xl p-6 shadow-elite;
+    @apply glass rounded-2xl p-6 shadow-elite transition-all duration-300 hover:shadow-elite-lg hover:-translate-y-1;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  }
+  
+  .glass-card:hover {
+    box-shadow: 0 35px 60px -12px rgba(0, 0, 0, 0.3);
   }
   
   .glass-button {
@@ -253,6 +258,11 @@
   .card {
     @apply rounded-2xl border border-border bg-card text-card-foreground;
     @apply shadow-elite transition-all duration-300 hover:shadow-elite-lg;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  }
+  
+  .card:hover {
+    box-shadow: 0 35px 60px -12px rgba(0, 0, 0, 0.3);
   }
   
   .card-header {
@@ -343,7 +353,7 @@
   }
 
   .champion-card:hover {
-    transform: translateY(-6px) scale(1.02);
+    transform: scale(1.02);
     box-shadow:
       inset 0 0 0 1px rgba(255, 255, 255, 0.05),
       0 20px 40px -18px rgba(0, 0, 0, 0.6);

@@ -3,9 +3,23 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { m } from 'framer-motion';
 import { TrendingUp, AlertCircle, Gauge, Activity } from 'lucide-react';
-import MetaOverview from '@/components/MetaOverview';
-import MetaTable from '@/components/MetaTable';
-import MetaTrends from '@/components/MetaTrends';
+import dynamic from 'next/dynamic';
+
+// Lazy load heavy components
+const MetaOverview = dynamic(() => import('@/components/MetaOverview'), {
+  loading: () => <div className="flex items-center justify-center p-8"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>,
+  ssr: false
+});
+
+const MetaTable = dynamic(() => import('@/components/MetaTable'), {
+  loading: () => <div className="flex items-center justify-center p-8"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>,
+  ssr: false
+});
+
+const MetaTrends = dynamic(() => import('@/components/MetaTrends'), {
+  loading: () => <div className="flex items-center justify-center p-8"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>,
+  ssr: false
+});
 import { Container } from '@/components/Section';
 import { api } from '@/lib/api';
 import { fadeUp, scaleIn } from '@/lib/motion';

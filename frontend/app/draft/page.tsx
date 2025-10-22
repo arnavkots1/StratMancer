@@ -3,10 +3,24 @@
 import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import { AlertCircle, Loader2, Sparkles, Shield, TrendingUp } from 'lucide-react';
 import { AnimatePresence, LayoutGroup, m } from 'framer-motion';
-import ChampionPicker from '@/components/ChampionPicker';
-import PredictionCard from '@/components/PredictionCard';
-import AnalysisPanel from '@/components/AnalysisPanel';
+import dynamic from 'next/dynamic';
 import EloSelector, { type EloGroup } from '@/components/EloSelector';
+
+// Lazy load heavy components
+const ChampionPicker = dynamic(() => import('@/components/ChampionPicker'), {
+  loading: () => <div className="flex items-center justify-center p-8"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>,
+  ssr: false
+});
+
+const PredictionCard = dynamic(() => import('@/components/PredictionCard'), {
+  loading: () => <div className="flex items-center justify-center p-4"><div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>,
+  ssr: false
+});
+
+const AnalysisPanel = dynamic(() => import('@/components/AnalysisPanel'), {
+  loading: () => <div className="flex items-center justify-center p-4"><div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>,
+  ssr: false
+});
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Container } from '@/components/Section';
@@ -14,6 +28,7 @@ import { api } from '@/lib/api';
 import { fadeUp, scaleIn } from '@/lib/motion';
 import { DraftBoard, type DraftAction } from '@/components/draft/DraftBoard';
 import { RecommendationsPanel } from '@/components/draft/RecommendationsPanel';
+import { ConfidenceIndicator } from '@/components/ConfidenceIndicator';
 import type { 
   DraftState, 
   Champion, 
@@ -540,6 +555,24 @@ export default function DraftPage() {
                 </div>
               </div>
             </m.header>
+
+            {/* Confidence Indicator */}
+            <m.div
+              variants={fadeUp}
+              className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-4 backdrop-blur"
+            >
+              <div className="flex items-center gap-4">
+                <div className="text-sm text-white/80">Draft Confidence:</div>
+                <ConfidenceIndicator
+                  confidence={prediction?.confidence || 0}
+                  filledSlots={Object.values(draftState.blue).filter(Boolean).length + Object.values(draftState.red).filter(Boolean).length}
+                  totalSlots={10}
+                />
+              </div>
+              <div className="text-xs text-white/60">
+                {prediction ? 'AI Analysis Active' : 'Awaiting Draft Data'}
+              </div>
+            </m.div>
 
             {error && (
               <m.div

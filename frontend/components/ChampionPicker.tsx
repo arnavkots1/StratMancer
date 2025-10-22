@@ -87,14 +87,14 @@ export default function ChampionPicker({
       <div className="mb-6">
         {currentDraftAction ? (
           <>
-            <h2 className="text-xl font-bold mb-2">
+            <h2 className="text-xl font-bold mb-2 ml-4">
               <span className={currentDraftAction.team === 'blue' ? 'text-blue-400' : 'text-red-400'}>
                 {currentDraftAction.team.toUpperCase()}
               </span>
               {' '}selecting{' '}
               {currentDraftAction.action === 'ban' ? 'BAN' : currentDraftAction.role?.toUpperCase()}
             </h2>
-            <p className="text-sm text-gray-400 mb-4">
+            <p className="text-sm text-gray-400 mb-4 ml-4">
               Click any champion below to {currentDraftAction.action === 'ban' ? 'ban' : 'pick'} it
             </p>
           </>
@@ -130,58 +130,89 @@ export default function ChampionPicker({
         </div>
 
         {/* Role Filter */}
-        <div className="mb-4">
+        <div className="mb-4 ml-4">
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-medium">Roles</label>
+            {selectedRole !== 'ALL' && (
+              <button
+                onClick={() => setSelectedRole('ALL')}
+                className="text-xs text-gray-400 hover:text-gray-300 transition-colors"
+              >
+                Clear selection
+              </button>
+            )}
+          </div>
           <div className="flex items-center space-x-2 overflow-x-auto pb-2">
             <button
               onClick={() => setSelectedRole('ALL')}
-              className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors ${
+              className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-all duration-200 border ${
                 selectedRole === 'ALL'
-                  ? 'bg-gold-600 text-gray-900'
-                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  ? 'bg-yellow-500 text-black border-yellow-400 shadow-lg font-bold'
+                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700 border-gray-600 hover:border-gray-500'
               }`}
             >
-              All Roles
+              {selectedRole === 'ALL' && '✓ '}All Roles
             </button>
             {ROLES.map(role => (
               <button
                 key={role}
                 onClick={() => setSelectedRole(role)}
-                className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-colors ${
+                className={`px-4 py-2 rounded-lg font-medium text-sm whitespace-nowrap transition-all duration-200 border ${
                   selectedRole === role
-                    ? 'bg-gold-600 text-gray-900'
-                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                    ? 'bg-yellow-500 text-black border-yellow-400 shadow-lg font-bold'
+                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700 border-gray-600 hover:border-gray-500'
                 }`}
               >
-                {role}
+                {selectedRole === role && '✓ '}{role}
               </button>
             ))}
           </div>
+          {selectedRole !== 'ALL' && (
+            <div className="mt-2 text-xs text-gray-400">
+              Active filter: {selectedRole}
+            </div>
+          )}
         </div>
 
         {/* Tag Filters */}
         {allTags.length > 0 && (
-          <div className="mb-4">
-            <label className="block text-sm font-medium mb-2">Tags</label>
+          <div className="mb-4 ml-4">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium">Tags</label>
+              {selectedTags.length > 0 && (
+                <button
+                  onClick={() => setSelectedTags([])}
+                  className="text-xs text-gray-400 hover:text-gray-300 transition-colors"
+                >
+                  Clear all ({selectedTags.length})
+                </button>
+              )}
+            </div>
             <div className="flex flex-wrap gap-2">
               {allTags.slice(0, 10).map((tag, index) => (
                 <button
                   key={`tag-${tag}-${index}`}
                   onClick={() => toggleTag(tag)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all duration-200 border ${
                     selectedTags.includes(tag)
-                      ? 'bg-gold-600 text-gray-900'
-                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                      ? 'bg-yellow-500 text-black border-yellow-400 shadow-lg font-bold'
+                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700 border-gray-600 hover:border-gray-500'
                   }`}
                 >
-                  {tag}
+                  {selectedTags.includes(tag) && '✓ '}{tag}
                 </button>
               ))}
             </div>
+            {selectedTags.length > 0 && (
+              <div className="mt-2 text-xs text-gray-400">
+                Active filters: {selectedTags.join(', ')}
+              </div>
+            )}
           </div>
         )}
 
         {/* Results Count */}
-        <div className="text-sm text-gray-400">
+        <div className="text-sm text-gray-400 ml-4">
           Showing {filteredChampions.length} of {champions.length} champions
         </div>
       </div>

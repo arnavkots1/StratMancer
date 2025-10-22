@@ -14,7 +14,6 @@ const marqueeItems = [
   { text: "Professional Analytics", color: "text-secondary-400" },
   { text: "Lightning-Fast Performance", color: "text-accent-400" },
   { text: "163+ Champions Tracked", color: "text-primary-400" },
-  { text: "94.2% Accuracy Rate", color: "text-secondary-400" },
   { text: "Global Data Pipeline", color: "text-accent-400" },
   { text: "Advanced Machine Learning", color: "text-primary-400" },
 ]

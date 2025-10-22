@@ -26,10 +26,10 @@ import { eliteMotionPresets } from "@/lib/motion"
 const features = [
   {
     title: "AI-Powered Draft Analysis",
-    description: "Advanced machine learning models analyze thousands of matches to provide real-time draft recommendations with 94.2% accuracy.",
+    description: "Advanced machine learning models analyze thousands of matches to provide real-time draft recommendations.",
     icon: Brain,
     color: "primary",
-    stats: "94.2% Accuracy",
+    stats: "Real-Time Predictions",
     features: ["Real-time predictions", "ELO-specific insights", "Meta-aware recommendations"]
   },
   {
@@ -50,10 +50,10 @@ const features = [
   },
   {
     title: "Professional Analytics",
-    description: "Advanced analytics dashboard for coaches and teams with detailed insights, performance metrics, and strategic recommendations.",
+    description: "Coming Soon - Advanced analytics dashboard for coaches and teams with detailed insights, performance metrics, and strategic recommendations.",
     icon: BarChart3,
     color: "primary",
-    stats: "10K+ Users",
+    stats: "Coming Soon",
     features: ["Team analytics", "Performance metrics", "Strategic insights"]
   },
   {
@@ -148,7 +148,7 @@ export function FeatureRows() {
                           <div className="p-3 rounded-xl bg-primary-500/10 border border-primary-500/20">
                             <Icon className="w-6 h-6 text-primary-400" />
                           </div>
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className={feature.title === "Professional Analytics" ? "text-sm font-bold" : "text-xs"}>
                             {feature.stats}
                           </Badge>
                         </div>
@@ -157,7 +157,7 @@ export function FeatureRows() {
                           {feature.title}
                         </h3>
                         
-                        <p className="text-muted-foreground mb-4">
+                        <p className={`mb-4 ${feature.title === "Professional Analytics" ? "text-foreground font-semibold" : "text-muted-foreground"}`}>
                           {feature.description}
                         </p>
                         
@@ -186,18 +186,18 @@ export function FeatureRows() {
             initial="initial"
             animate="animate"
             variants={eliteMotionPresets.page}
-            className="text-center mb-16"
+            className="text-center mb-20"
           >
-            <Badge variant="outline" className="mb-4">
+            <Badge variant="outline" className="mb-6">
               <Clock className="w-4 h-4 mr-2" />
               How It Works
             </Badge>
-            <h2 className="text-4xl lg:text-6xl font-bold mb-6">
+            <h2 className="text-4xl lg:text-6xl font-bold mb-8">
               <span className="gradient-text">From Data</span>
               <br />
               <span className="text-foreground">to Insights</span>
             </h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-4">
               Our advanced pipeline processes millions of matches to deliver the most accurate draft analysis available.
             </p>
           </m.div>
@@ -211,36 +211,29 @@ export function FeatureRows() {
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="relative"
+                  className="flex flex-col h-full"
                 >
-                  {/* Connection Line */}
-                  {index < workflowSteps.length - 1 && (
-                    <div className="hidden lg:block absolute top-12 left-full w-full h-0.5 bg-gradient-to-r from-primary-500/50 to-transparent z-0" />
-                  )}
-                  
-                  <div className="relative z-10">
-                    <Glow variant={step.color as any}>
-                      <Card variant="premium" className="text-center group hover:scale-105 transition-all duration-300">
-                        <div className="p-6">
-                          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary-500/10 border border-primary-500/20 mb-4">
-                            <Icon className="w-8 h-8 text-primary-400" />
-                          </div>
-                          
-                          <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-500 text-primary-foreground text-sm font-bold mb-4">
-                            {step.step}
-                          </div>
-                          
-                          <h3 className="text-lg font-semibold mb-3 text-foreground">
-                            {step.title}
-                          </h3>
-                          
-                          <p className="text-muted-foreground text-sm">
-                            {step.description}
-                          </p>
+                  <Glow variant={step.color as any}>
+                    <Card variant="premium" className="text-center group hover:scale-105 transition-all duration-300 h-full flex flex-col">
+                      <div className="p-6 flex flex-col h-full">
+                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary-500/10 border border-primary-500/20 mb-4">
+                          <Icon className="w-8 h-8 text-primary-400" />
                         </div>
-                      </Card>
-                    </Glow>
-                  </div>
+                        
+                        <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-500 text-primary-foreground text-sm font-bold mb-4">
+                          {step.step}
+                        </div>
+                        
+                        <h3 className="text-lg font-semibold mb-3 text-foreground">
+                          {step.title}
+                        </h3>
+                        
+                        <p className="text-muted-foreground text-sm leading-relaxed flex-1">
+                          {step.description}
+                        </p>
+                      </div>
+                    </Card>
+                  </Glow>
                 </m.div>
               )
             })}

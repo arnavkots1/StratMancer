@@ -160,12 +160,17 @@ export default function RecommendationCard({
                         src={getChampionImageUrl(champion.name)}
                         alt={rec.champion_name}
                         className="w-full h-full object-cover"
+                        loading="eager"
+                        decoding="async"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                        }}
                       />
-                    ) : (
-                      <div className="w-full h-full bg-gray-700 flex items-center justify-center text-gray-500">
-                        ?
-                      </div>
-                    )}
+                    ) : null}
+                    <div className="hidden w-full h-full bg-gray-700 flex items-center justify-center text-gray-500">
+                      ?
+                    </div>
                   </div>
 
                   {/* Champion Info */}

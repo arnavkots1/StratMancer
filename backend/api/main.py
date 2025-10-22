@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.exceptions import RequestValidationError
 
 from backend.config import settings
-from backend.api.routers import health, predict, models, team_optimizer, admin, recommend, analysis, meta
+from backend.api.routers import health, predict, models, team_optimizer, admin, recommend, analysis, meta, landing
 
 # Optional imports for production features
 try:
@@ -176,6 +176,7 @@ app.include_router(recommend.router)
 app.include_router(analysis.router)
 app.include_router(admin.router)
 app.include_router(meta.router)
+app.include_router(landing.router)
 
 # Metrics endpoint - optional
 if METRICS_AVAILABLE:

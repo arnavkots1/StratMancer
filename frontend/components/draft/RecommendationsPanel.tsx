@@ -71,6 +71,7 @@ export function RecommendationsPanel({
       return
     }
 
+    // Typewriter animation with better timing
     setDisplayedReason("")
     let frame = 0
     const interval = window.setInterval(() => {
@@ -79,7 +80,7 @@ export function RecommendationsPanel({
       if (frame >= text.length) {
         window.clearInterval(interval)
       }
-    }, 26)
+    }, 50) // Slower for better readability
 
     return () => {
       window.clearInterval(interval)
@@ -114,6 +115,13 @@ export function RecommendationsPanel({
                 fill
                 sizes="80px"
                 className="object-cover transition duration-500 group-hover:scale-105 group-hover:blur-[1px]"
+                loading="eager"
+                priority
+                quality={90}
+                decoding="async"
+                onError={(e) => {
+                  console.log(`Failed to load recommendation image: ${recommendation.champion_name}`);
+                }}
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-white/30">
@@ -229,7 +237,15 @@ export function RecommendationsPanel({
             className="relative mt-2 font-mono text-sm text-white/70"
           >
             {displayedReason}
-            {!reduceMotion && <span className="ml-1 animate-pulse text-accent">▌</span>}
+            {!reduceMotion && (
+              <m.span 
+                className="ml-1 text-accent"
+                animate={{ opacity: [1, 0, 1] }}
+                transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+              >
+                ▌
+              </m.span>
+            )}
           </m.p>
         </m.div>
 

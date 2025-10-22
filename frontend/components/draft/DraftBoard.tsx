@@ -30,12 +30,12 @@ type DraftBoardProps = {
   onRemoveBan: (team: "blue" | "red", index: number) => void
 }
 
-const ROLES: Array<{ key: keyof TeamComposition; label: string; icon: string }> = [
-  { key: "top", label: "Top", icon: "🛡️" },
-  { key: "jungle", label: "Jungle", icon: "🌲" },
-  { key: "mid", label: "Mid", icon: "🧠" },
-  { key: "adc", label: "Bot", icon: "🎯" },
-  { key: "support", label: "Support", icon: "✨" },
+const ROLES: Array<{ key: keyof TeamComposition; label: string }> = [
+  { key: "top", label: "Top" },
+  { key: "jungle", label: "Jungle" },
+  { key: "mid", label: "Mid" },
+  { key: "adc", label: "Bot" },
+  { key: "support", label: "Support" },
 ]
 
 const TEAM_META = {
@@ -76,38 +76,40 @@ export function DraftBoard({
     isActive: boolean,
   ) => {
     return (
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-lg shadow-[0_14px_40px_-20px_rgba(0,0,0,0.8)]">
-        <div className="flex items-center justify-between pb-3 text-xs uppercase tracking-[0.24em] text-white/40">
-          <span>
+      <div className="relative overflow-hidden rounded-sm border border-white/10 bg-white/5 p-0.5 backdrop-blur-lg shadow-[0_2px_8px_-4px_rgba(0,0,0,0.3)]">
+        <div className="flex items-center justify-start pb-0.5 text-[7px] uppercase tracking-[0.05em] text-white/40">
+          <span className="ml-4 text-white/50">
             {TEAM_META[team].label} · {ROLES.find((roleInfo) => roleInfo.key === role)?.label}
           </span>
-          <span>{ROLES.find((roleInfo) => roleInfo.key === role)?.icon}</span>
         </div>
 
         <div
           className={cn(
-            "relative aspect-[5/4] overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-[#101623] to-[#090d16]",
-            isActive && "ring-4 ring-offset-2 ring-offset-[#0b0f17] ring-primary/60",
+            "relative overflow-hidden rounded-md border border-white/10 bg-gradient-to-br from-[#101623] to-[#090d16]",
+            isActive && "ring-2 ring-offset-1 ring-offset-[#0b0f17] ring-primary/60",
           )}
+          style={{ aspectRatio: '4/1' }}
         >
           <AnimatePresence mode="wait">
             {champion ? (
               <m.div
                 key={champion.id}
                 layoutId={`champion-${champion.id}`}
-                initial={{ opacity: 0, scale: 0.92, filter: "blur(12px)" }}
-                animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                exit={{ opacity: 0, scale: 0.96, filter: "blur(6px)" }}
-                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                 className="absolute inset-0"
               >
                 <Image
-                  src={getChampionImageUrl(champion.name)}
+                  src={getChampionImageUrl(champion.name, 'splash')}
                   alt={champion.name}
                   fill
-                  sizes="220px"
-                  className="object-cover"
-                  loading="lazy"
+                  sizes="(max-width: 768px) 150px, 200px"
+                  className="object-cover object-top"
+                  loading="eager"
+                  priority
+                  quality={90}
                 />
                 <m.div
                   aria-hidden
@@ -115,12 +117,12 @@ export function DraftBoard({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                 />
-                <div className="absolute inset-x-4 bottom-3 flex items-center justify-between">
+                <div className="absolute inset-x-2 bottom-1 flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-semibold text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
+                    <p className="text-xs font-semibold text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]">
                       {champion.name}
                     </p>
-                    <p className="text-[10px] uppercase tracking-[0.32em] text-white/60">
+                    <p className="text-[8px] uppercase tracking-[0.2em] text-white/60">
                       {champion.tags?.role ? String(champion.tags.role).toUpperCase() : "Meta"}
                     </p>
                   </div>
@@ -128,9 +130,9 @@ export function DraftBoard({
                     size="sm"
                     variant="ghost"
                     onClick={() => onRemovePick(team, role)}
-                    className="h-8 rounded-lg border border-white/10 bg-black/30 px-3 text-xs text-white/60 hover:text-white/90"
+                    className="h-5 rounded-md border border-white/10 bg-black/30 px-1 text-[8px] text-white/60 hover:text-white/90"
                   >
-                    Remove
+                    ×
                   </Button>
                 </div>
               </m.div>
@@ -140,16 +142,15 @@ export function DraftBoard({
                 initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
-                className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-white/30"
+                className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-white/30"
               >
-                <span className="text-lg">{ROLES.find((roleInfo) => roleInfo.key === role)?.icon}</span>
-                <span className="text-xs tracking-[0.38em] uppercase">Awaiting Pick</span>
+                <span className="text-[8px] tracking-[0.2em] uppercase">Awaiting Pick</span>
                 {isActive && (
                   <m.span
                     initial={{ opacity: 0 }}
                     animate={{ opacity: [0.4, 1, 0.4] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    className="rounded-full border border-primary/60 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.34em] text-primary/80"
+                    className="rounded-full border border-primary/60 px-1 py-0.5 text-[8px] font-semibold uppercase tracking-[0.2em] text-primary/80"
                   >
                     Active
                   </m.span>
@@ -169,14 +170,14 @@ export function DraftBoard({
           )}
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-1 flex flex-wrap gap-1">
           {champion?.tags?.damage && (
-            <span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.28em] text-white/60">
+            <span className="rounded-full border border-white/10 bg-white/10 px-2 py-0.5 text-[8px] uppercase tracking-[0.2em] text-white/60">
               {Array.isArray(champion.tags.damage) ? champion.tags.damage.join(" • ") : champion.tags.damage}
             </span>
           )}
           {champion?.tags?.engage !== undefined && (
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.28em] text-white/60">
+            <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[8px] uppercase tracking-[0.2em] text-white/60">
               Engage {champion.tags.engage}
             </span>
           )}
@@ -189,18 +190,18 @@ export function DraftBoard({
     const accent = TEAM_META[team].accent
     return (
       <div>
-        <div className="flex items-center justify-between pb-3">
-          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.24em] text-white/40">
-            <Ban className="h-4 w-4 text-white/40" />
+        <div className="flex items-center justify-between pb-1">
+          <div className="flex items-center gap-1 text-[10px] uppercase tracking-[0.2em] text-white/40">
+            <Ban className="h-3 w-3 text-white/40" />
             <span>{TEAM_META[team].label} Bans</span>
           </div>
-          <span className={cn("text-xs font-semibold", accent)}>
+          <span className={cn("text-[10px] font-semibold", accent)}>
             {bans.length}
             <span className="text-white/30"> / 5</span>
           </span>
         </div>
 
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-5 gap-1">
           {Array.from({ length: 5 }).map((_, index) => {
             const ban = bans[index]
             const isActive =
@@ -209,7 +210,7 @@ export function DraftBoard({
               <div
                 key={`${team}-ban-${index}`}
                 className={cn(
-                  "relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-[#101623] to-[#090d16]",
+                  "relative aspect-square overflow-hidden rounded-md border border-white/10 bg-gradient-to-br from-[#101623] to-[#090d16]",
                   isActive && "ring-2 ring-primary/50 ring-offset-2 ring-offset-[#0b0f17]",
                 )}
               >
@@ -232,16 +233,16 @@ export function DraftBoard({
                       />
                       <div className="absolute inset-0 bg-black/45" />
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-white/70">
-                        <Ban className="h-5 w-5" />
-                        <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.26em]">
+                        <Ban className="h-3 w-3" />
+                        <span className="mt-0.5 text-[8px] font-semibold uppercase tracking-[0.2em]">
                           {ban.name}
                         </span>
                       </div>
                       <button
                         onClick={() => onRemoveBan(team, index)}
-                        className="absolute right-2 top-2 rounded-full border border-white/10 bg-black/40 px-2 py-1 text-[10px] text-white/60 transition hover:text-white"
+                        className="absolute right-1 top-1 rounded-full border border-white/10 bg-black/40 px-1 py-0.5 text-[8px] text-white/60 transition hover:text-white"
                       >
-                        Clear
+                        ×
                       </button>
                     </m.div>
                   ) : (
@@ -278,12 +279,12 @@ export function DraftBoard({
       initial="initial"
       animate="animate"
       variants={stagger}
-      className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[#0c101b]/80 p-8 shadow-[0_40px_120px_-60px_rgba(8,10,20,0.9)] backdrop-blur-xl"
+      className="relative overflow-hidden rounded-[16px] border border-white/10 bg-[#0c101b]/80 p-2 shadow-[0_8px_24px_-12px_rgba(8,10,20,0.9)] backdrop-blur-xl"
     >
       <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 via-transparent to-secondary/10 opacity-70" />
-      <div className="relative space-y-8">
+      <div className="relative space-y-0.5">
         <m.div variants={fadeUp} className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div>
+          <div className="ml-6">
             <p className="text-xs uppercase tracking-[0.32em] text-white/40">Draft Status</p>
             <div className="mt-2 flex items-center gap-3 text-base text-white/75">
               {currentAction ? (
@@ -357,10 +358,10 @@ export function DraftBoard({
           </div>
         </m.div>
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-0.5 lg:grid-cols-2">
           <m.div variants={slideIn("left")}>
-            <div className={cn("rounded-[28px] border bg-gradient-to-br p-6 backdrop-blur-xl", TEAM_META.blue.border, TEAM_META.blue.gradient)}>
-              <div className="space-y-6">
+            <div className={cn("rounded-[6px] border bg-gradient-to-br p-0.5 backdrop-blur-xl", TEAM_META.blue.border, TEAM_META.blue.gradient)}>
+              <div className="space-y-0.5">
                 {ROLES.map(({ key }) =>
                   renderChampionCard(
                     "blue",
@@ -379,8 +380,8 @@ export function DraftBoard({
           </m.div>
 
           <m.div variants={slideIn("right")}>
-            <div className={cn("rounded-[28px] border bg-gradient-to-bl p-6 backdrop-blur-xl", TEAM_META.red.border, TEAM_META.red.gradient)}>
-              <div className="space-y-6">
+            <div className={cn("rounded-[6px] border bg-gradient-to-bl p-0.5 backdrop-blur-xl", TEAM_META.red.border, TEAM_META.red.gradient)}>
+              <div className="space-y-0.5">
                 {ROLES.map(({ key }) =>
                   renderChampionCard(
                     "red",
