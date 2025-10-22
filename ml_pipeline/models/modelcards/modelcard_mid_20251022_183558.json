@@ -1,0 +1,53 @@
+{
+  "elo": "mid",
+  "model_type": "xgb",
+  "timestamp": "2025-10-22T18:35:59.012242",
+  "features": 3410,
+  "train_size": 1934,
+  "test_size": 215,
+  "calibrated": true,
+  "calibrator_method": "platt",
+  "source_patch": "15.20",
+  "feature_mode": "rich",
+  "feature_flags": {
+    "use_embeddings": true,
+    "use_matchups": true,
+    "use_synergy": true,
+    "ban_context": true,
+    "pick_order": false
+  },
+  "assets": {
+    "priors": true,
+    "matchups": true,
+    "embeddings": true
+  },
+  "model_file": "draft_mid_xgb_20251022_183558.pkl",
+  "calibrator_file": "calibrator_mid_20251022_183558.pkl",
+  "metrics": {
+    "roc_auc_raw": 0.8991683991683992,
+    "roc_auc_calibrated": 0.8991683991683992,
+    "log_loss_raw": 0.4060647229130384,
+    "log_loss_calibrated": 0.4257906015073967,
+    "brier_raw": 0.1315382810947152,
+    "brier_calibrated": 0.13648955741095076,
+    "ece_raw": 0.0582512391861095,
+    "ece_calibrated": 0.08196238860403407
+  },
+  "params": {
+    "objective": "binary:logistic",
+    "eval_metric": "logloss",
+    "n_estimators": 500,
+    "subsample": 0.7,
+    "colsample_bytree": 0.5,
+    "learning_rate": 0.05,
+    "max_depth": 3,
+    "min_child_weight": 10,
+    "gamma": 0.5,
+    "reg_lambda": 10.0,
+    "reg_alpha": 5.0,
+    "random_state": 42,
+    "verbosity": 0,
+    "n_jobs": -1,
+    "use_label_encoder": false
+  }
+}

@@ -99,6 +99,14 @@
     @apply from-primary-400 to-primary-500;
   }
 
+  /* Grid overlay - Figma Design */
+  .grid-overlay {
+    background-image: 
+      linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+
   /* Elite Glassmorphism */
   .glass {
     @apply border border-white/10 bg-white/5 backdrop-blur-xl;

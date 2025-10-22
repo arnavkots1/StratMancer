@@ -68,35 +68,78 @@ export function Hero() {
         initial="initial"
         animate="animate"
       >
-        <div className="absolute inset-0 cinematic-grid opacity-60" />
-        <HologramParticles className="mix-blend-screen opacity-75" density={0.85} />
-        <div className="absolute inset-0 bg-gradient-to-br from-[#110c1f]/60 via-transparent to-[#051019]/80" />
-        <div className="rift-fog" />
+        {/* Figma Background - Exact Replication */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0b0f17] via-[#1a1f2e] to-[#0b0f17]" />
+        
+        {/* Grid overlay */}
+        <div className="absolute inset-0 grid-overlay opacity-30" />
+        
+        {/* Hero image with parallax */}
+        <m.div
+          className="absolute inset-0 opacity-20"
+          style={{
+            backgroundImage: `url(https://images.unsplash.com/photo-1604171256342-9945bfa74c4e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlc3BvcnRzJTIwZ2FtaW5nJTIwZGFya3xlbnwxfHx8fDE3NjEwMzIxMzR8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral)`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+          animate={{
+            scale: [1, 1.05, 1],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+        />
 
-        {!reduceMotion && (
-          <m.svg
-            width="960"
-            height="560"
-            viewBox="0 0 960 560"
-            preserveAspectRatio="none"
-            className="pointer-events-none absolute inset-y-0 -left-1/4"
-            initial={{ x: "-30%" }}
-            animate={{ x: "35%" }}
-            transition={{ duration: 12, ease: "easeInOut", repeat: Infinity, repeatType: "mirror" }}
-          >
-            <defs>
-              <linearGradient id="beam" x1="0%" x2="100%" y1="0%" y2="0%">
-                <stop offset="0%" stopColor="#7c3aed" stopOpacity="0" />
-                <stop offset="50%" stopColor="#06b6d4" stopOpacity="0.65" />
-                <stop offset="100%" stopColor="#fbbf24" stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <rect width="960" height="560" fill="url(#beam)" opacity="0.6" />
-          </m.svg>
-        )}
+        {/* Gradient orbs */}
+        <m.div
+          className="absolute w-96 h-96 rounded-full bg-[#ea3943] opacity-20 blur-3xl"
+          animate={{
+            x: [0, 20, 0],
+            y: [0, -20, 0],
+          }}
+          transition={{
+            duration: 8,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+          style={{ top: "20%", left: "10%" }}
+        />
+        <m.div
+          className="absolute w-96 h-96 rounded-full bg-[#d946ef] opacity-20 blur-3xl"
+          animate={{
+            x: [0, -20, 0],
+            y: [0, 20, 0],
+          }}
+          transition={{
+            duration: 10,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+          style={{ bottom: "20%", right: "10%" }}
+        />
 
-        <div className="lens-flare top-[-140px] left-[-120px]" />
-        <div className="lens-flare bottom-[-220px] right-[-200px]" />
+        {/* Scattered Keyboard Keys - Enhanced Background */}
+        <div className="absolute inset-0">
+          <div className="absolute top-1/4 left-1/4 text-red-500/30 text-3xl font-mono blur-sm">F2</div>
+          <div className="absolute top-1/3 right-1/3 text-red-500/30 text-3xl font-mono blur-sm">F3</div>
+          <div className="absolute top-1/2 left-1/6 text-red-500/30 text-3xl font-mono blur-sm">F4</div>
+          <div className="absolute top-2/3 right-1/4 text-red-500/30 text-3xl font-mono blur-sm">%5</div>
+          <div className="absolute bottom-1/3 left-1/3 text-red-500/30 text-3xl font-mono blur-sm">U</div>
+          <div className="absolute bottom-1/4 right-1/6 text-red-500/30 text-3xl font-mono blur-sm">K</div>
+          <div className="absolute top-1/6 right-1/2 text-red-500/30 text-3xl font-mono blur-sm">M</div>
+          <div className="absolute bottom-1/2 left-1/2 text-red-500/30 text-3xl font-mono blur-sm">N</div>
+          <div className="absolute top-3/4 left-1/5 text-red-500/30 text-3xl font-mono blur-sm">R</div>
+          <div className="absolute top-1/5 right-1/5 text-red-500/30 text-3xl font-mono blur-sm">20</div>
+          <div className="absolute bottom-1/5 left-1/4 text-red-500/30 text-3xl font-mono blur-sm">F1</div>
+          <div className="absolute top-2/5 right-1/6 text-red-500/30 text-3xl font-mono blur-sm">F5</div>
+          <div className="absolute bottom-2/5 left-2/3 text-red-500/30 text-3xl font-mono blur-sm">F6</div>
+          <div className="absolute top-1/8 left-1/3 text-red-500/30 text-3xl font-mono blur-sm">F7</div>
+          <div className="absolute bottom-1/8 right-1/3 text-red-500/30 text-3xl font-mono blur-sm">F8</div>
+          <div className="absolute top-3/5 left-1/8 text-red-500/30 text-3xl font-mono blur-sm">F9</div>
+          <div className="absolute bottom-3/5 right-1/8 text-red-500/30 text-3xl font-mono blur-sm">F10</div>
+        </div>
       </m.div>
 
       <Container size="xl" className="relative z-10 py-24 lg:py-32">
