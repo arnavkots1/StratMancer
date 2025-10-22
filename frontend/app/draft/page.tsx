@@ -1,23 +1,19 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { AlertCircle, Loader2, Sparkles, Zap, Shield, TrendingUp, Target, RefreshCw } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
+import { AlertCircle, Loader2, Sparkles, Shield, TrendingUp } from 'lucide-react';
+import { AnimatePresence, LayoutGroup, m } from 'framer-motion';
 import ChampionPicker from '@/components/ChampionPicker';
-import RoleSlots from '@/components/RoleSlots';
 import PredictionCard from '@/components/PredictionCard';
-import RecommendationCard from '@/components/RecommendationCard';
 import AnalysisPanel from '@/components/AnalysisPanel';
 import EloSelector, { type EloGroup } from '@/components/EloSelector';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Glow } from '@/components/Glow';
 import { Container } from '@/components/Section';
 import { api } from '@/lib/api';
-import { getChampionImageUrl } from '@/lib/championImages';
-import { cn } from '@/lib/cn';
-import { eliteMotionPresets } from '@/lib/motion';
+import { fadeUp, scaleIn } from '@/lib/motion';
+import { DraftBoard, type DraftAction } from '@/components/draft/DraftBoard';
+import { RecommendationsPanel } from '@/components/draft/RecommendationsPanel';
 import type { 
   DraftState, 
   Champion, 
@@ -61,7 +57,6 @@ export default function DraftPage() {
   const [error, setError] = useState<string | null>(null);
 
   // Recommendation state
-  const [showRecommendations, setShowRecommendations] = useState(false);
   const [recommendations, setRecommendations] = useState<any>(null);
   const [recommendationLoading, setRecommendationLoading] = useState(false);
   const [recommendationError, setRecommendationError] = useState<string | null>(null);
@@ -112,6 +107,36 @@ export default function DraftPage() {
     return DRAFT_SEQUENCE[draftStep];
   }, [draftStep, DRAFT_SEQUENCE]);
 
+  const totalSteps = DRAFT_SEQUENCE.length;
+
+  const lockedChampionIds = useMemo(() => {
+    const picked = [
+      ...Object.values(draftState.blue),
+      ...Object.values(draftState.red),
+    ]
+      .filter((champ): champ is Champion => Boolean(champ))
+      .map((champ) => parseInt(champ.id, 10));
+
+    const banned = [...draftState.blueBans, ...draftState.redBans]
+      .filter((champ): champ is Champion => Boolean(champ))
+      .map((champ) => parseInt(champ.id, 10));
+
+    return new Set<number>([...picked, ...banned]);
+  }, [draftState.blue, draftState.red, draftState.blueBans, draftState.redBans]);
+
+  const lockedChampionNames = useMemo(() => {
+    const names = [
+      ...Object.values(draftState.blue),
+      ...Object.values(draftState.red),
+      ...draftState.blueBans,
+      ...draftState.redBans,
+    ]
+      .filter((champ): champ is Champion => Boolean(champ))
+      .map((champ) => champ.name);
+
+    return new Set<string>(names);
+  }, [draftState.blue, draftState.red, draftState.blueBans, draftState.redBans]);
+
   // Load champion data on mount
   useEffect(() => {
     loadChampions();
@@ -141,7 +166,7 @@ export default function DraftPage() {
       setError(null);
       
       // Try to load feature map from backend
-      const featureMap: FeatureMap = await api.getFeatureMap();
+      const featureMap = await api.getFeatureMap() as FeatureMap;
       
       // Convert feature map to champion array
       const champArray: Champion[] = Object.entries(featureMap.champ_index).map(([name, championId]) => {
@@ -220,10 +245,10 @@ export default function DraftPage() {
       };
 
       const result = await api.predictDraft(requestData as any);
-      setPrediction(result);
+      setPrediction(result as PredictionResponse);
       
       // Automatically trigger analysis after prediction
-      handleAnalyzeDraft(requestData, result);
+      handleAnalyzeDraft(requestData, result as PredictionResponse);
     } catch (err: any) {
       console.error('Prediction failed:', err);
       setError(err.message || 'Prediction failed. Please try again.');
@@ -258,7 +283,6 @@ export default function DraftPage() {
 
     setRecommendationLoading(true);
     setRecommendationError(null);
-    setShowRecommendations(true);
 
     try {
       const { team, action, role } = currentDraftAction;
@@ -323,7 +347,7 @@ export default function DraftPage() {
     } finally {
       setRecommendationLoading(false);
     }
-  }, [currentDraftAction, draftState, api]);
+  }, [currentDraftAction, draftState]);
 
   // Auto-show recommendations when draft step changes (only after draft starts)
   useEffect(() => {
@@ -340,12 +364,49 @@ export default function DraftPage() {
     console.log('Found champion:', champion);
     if (champion) {
       handleChampionSelect(champion);
-      setShowRecommendations(false);
       setRecommendations(null);
     } else {
       console.error('Champion not found for ID:', championId);
     }
   };
+
+  const handleRemovePickSlot = useCallback((team: 'blue' | 'red', role: keyof TeamComposition) => {
+    setDraftState(prev => ({
+      ...prev,
+      [team]: {
+        ...prev[team],
+        [role]: null,
+      },
+    }));
+  }, []);
+
+  const handleRemoveBanSlot = useCallback((team: 'blue' | 'red', index: number) => {
+    setDraftState(prev => {
+      const updatedBans = team === 'blue' ? [...prev.blueBans] : [...prev.redBans];
+      updatedBans.splice(index, 1);
+      return {
+        ...prev,
+        blueBans: team === 'blue' ? updatedBans : prev.blueBans,
+        redBans: team === 'red' ? updatedBans : prev.redBans,
+      };
+    });
+  }, []);
+
+  const handleStartDraft = useCallback(() => {
+    setDraftStarted(true);
+    setTimerActive(true);
+    setPickTimer(30);
+  }, []);
+
+  const handleToggleTimer = useCallback(() => {
+    setTimerActive(prev => {
+      const next = !prev;
+      if (next) {
+        setPickTimer(30);
+      }
+      return next;
+    });
+  }, []);
 
   const handleResetDraft = () => {
     setDraftState({
@@ -373,7 +434,6 @@ export default function DraftPage() {
     setDraftStep(0);
     setPickTimer(30);
     setTimerActive(false);
-    setShowRecommendations(false);
     setRecommendations(null);
     setShowAnalysis(false);
     setAnalysis(null);
@@ -427,451 +487,274 @@ export default function DraftPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
+      <div className="min-h-screen flex items-center justify-center bg-[#060911]">
+        <m.div
+          initial={{ opacity: 0, scale: 0.92 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="flex flex-col items-center justify-center space-y-4"
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-col items-center gap-4 rounded-3xl border border-white/10 bg-[#0c1424]/80 px-12 py-10 text-white/70 shadow-[0_45px_120px_-60px_rgba(6,9,17,0.9)] backdrop-blur-xl"
         >
           <div className="relative">
-            <Loader2 className="w-16 h-16 text-primary-500 animate-spin" />
-            <div className="absolute inset-0 w-16 h-16 bg-primary-500/20 rounded-full blur-xl animate-pulse" />
+            <Loader2 className="h-16 w-16 animate-spin text-accent" />
+            <div className="absolute inset-0 h-16 w-16 rounded-full bg-accent/20 blur-2xl" />
           </div>
-          <p className="text-lg text-muted-foreground">Loading champion data...</p>
-          <p className="text-sm text-muted-foreground/60">Preparing your draft experience</p>
-        </motion.div>
+          <p className="text-lg font-semibold text-white">Initializing Draft Matrix…</p>
+          <p className="text-sm text-white/60">Downloading champion telemetry and model context</p>
+        </m.div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
-      <Container size="xl" className="py-8">
-        <motion.div 
-          initial="initial"
-          animate="animate"
-          variants={eliteMotionPresets.page}
-          className="max-w-7xl mx-auto space-y-6"
-        >
-        {/* Header with Draft Controls */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">Draft Analyzer</h1>
-              <p className="text-gray-400">
-                Click champions to assign them to team positions
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              {/* ELO Selector */}
-              <div className="w-64">
-                <EloSelector
-                  value={draftState.elo as EloGroup}
-                  onChange={async (elo) => {
-                    console.log(`🔄 ELO changed to: ${elo.toUpperCase()}`);
-                    
-                    setDraftState(prev => ({ ...prev, elo: elo as Elo }));
-                    
-                    // Clear all cached state when switching ELO to force fresh predictions
-                    setPrediction(null);
-                    setAnalysis(null);
-                    setRecommendations(null);
-                    setError(null);
-                    setRecommendationError(null);
-                    setShowRecommendations(false);
-                    setShowAnalysis(false);
-                    
-                    // Request backend to clear context cache for this ELO
-                    try {
-                      await api.refreshContext(elo);
-                      console.log(`✅ Backend context refreshed for ${elo.toUpperCase()}`);
-                    } catch (err) {
-                      console.warn('⚠️ Failed to refresh backend context:', err);
-                      // Non-critical error, continue anyway
-                    }
-                    
-                    console.log('✅ All cached predictions and recommendations cleared');
-                  }}
-                />
-              </div>
-              
-              {/* Start Draft */}
-              <button
-                className={`btn ${draftStarted ? 'btn-secondary' : 'btn-primary'}`}
-                onClick={() => {
-                  setDraftStarted(true);
-                  setTimerActive(true);
-                  setPickTimer(30);
-                }}
-                disabled={draftStarted}
-                title={draftStarted ? 'Draft already started' : 'Start Draft'}
-              >
-                {draftStarted ? 'Draft Started' : 'Start Draft'}
-              </button>
-              {/* Timer */}
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-400">Pick Timer:</span>
-                <div className={`px-4 py-2 rounded-lg font-bold text-xl ${timerActive ? 'bg-red-600 animate-pulse' : 'bg-gray-700'}`}>
-                  {pickTimer}s
-                </div>
-                <button
-                  onClick={() => {
-                    setTimerActive(!timerActive);
-                    if (!timerActive) setPickTimer(30);
-                  }}
-                  className="btn btn-secondary"
-                >
-                  {timerActive ? 'Pause' : 'Start'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Active Draft Step Indicator */}
-          {currentDraftAction && (
-            <div className={`p-4 border-2 rounded-lg animate-fade-in ${
-              currentDraftAction.team === 'blue' 
-                ? 'bg-blue-600/10 border-blue-500' 
-                : 'bg-red-600/10 border-red-500'
-            }`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="text-3xl">
-                    {currentDraftAction.action === 'ban' ? '🚫' : '✨'}
-                  </div>
-                  <div>
-                    <div className="font-bold text-xl">
-                      <span className={currentDraftAction.team === 'blue' ? 'text-blue-400' : 'text-red-400'}>
-                        {currentDraftAction.team.toUpperCase()} TEAM
-                      </span>
-                      {' - '}
-                      {currentDraftAction.action === 'ban' 
-                        ? `BAN ${Math.floor((draftStep + 1) / 2)}/5`
-                        : `PICK ${currentDraftAction.role?.toUpperCase()}`
-                      }
-                    </div>
-                    <div className="text-sm text-gray-400">
-                      Step {draftStep + 1}/{DRAFT_SEQUENCE.length} · Click a champion below
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-sm text-gray-400 mb-1">Phase</div>
-                  <div className="text-lg font-bold text-gold-500">
-                    {currentDraftAction.action === 'ban' ? 'BANNING' : 'PICKING'}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {!currentDraftAction && (
-            <div className="p-4 bg-green-600/10 border-2 border-green-500 rounded-lg animate-fade-in">
-              <div className="flex items-center gap-3">
-                <div className="text-3xl">✅</div>
-                <div>
-                  <div className="font-bold text-xl text-green-400">Draft Complete!</div>
-                  <div className="text-sm text-gray-400">Click "Analyze Draft" to see predictions</div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Error Display */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-900/20 border border-red-800 rounded-lg flex items-start space-x-3 animate-fade-in">
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="text-red-400">{error}</p>
-            </div>
-            <button
-              onClick={() => setError(null)}
-              className="text-red-400 hover:text-red-300"
+    <div className="min-h-screen bg-[#060911]">
+      <Container size="xl" className="py-16 lg:py-20">
+        <LayoutGroup>
+          <m.div
+            initial="initial"
+            animate="animate"
+            variants={fadeUp}
+            className="space-y-12"
+          >
+            <m.header
+              variants={scaleIn}
+              className="relative overflow-hidden rounded-[32px] border border-white/10 bg-gradient-to-br from-primary/12 via-[#0d1424]/85 to-secondary/10 p-10 backdrop-blur-xl shadow-[0_45px_140px_-80px_rgba(7,10,17,0.9)]"
             >
-              ×
-            </button>
-          </div>
-        )}
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(6,182,212,0.25),transparent_55%)] opacity-60" />
+              <div className="relative flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
+                <div className="max-w-3xl space-y-4">
+                  <Badge className="w-fit border-white/20 bg-white/10 px-4 py-2 text-xs uppercase tracking-[0.32em] text-white/60">
+                    Live Draft Intelligence
+                  </Badge>
+                  <h1 className="text-3xl font-semibold text-white md:text-5xl">
+                    Holographic Draft Command Window
+                  </h1>
+                  <p className="max-w-xl text-sm text-white/65 md:text-base">
+                    Coordinate bans and picks with StratMancer&apos;s predictive engine. Watch AI reasoning unfold
+                    as we forecast every matchup pivot in real-time.
+                  </p>
+                </div>
+                <div className="grid w-full gap-4 sm:grid-cols-3 lg:w-auto">
+                  <MetricPill icon={<Sparkles className="h-4 w-4 text-accent" />} label="Model" value={draftState.elo.toUpperCase()} />
+                  <MetricPill icon={<Shield className="h-4 w-4 text-sky-300" />} label="Phase" value={currentDraftAction ? (currentDraftAction.action === 'ban' ? 'Ban Round' : `${currentDraftAction.role?.toUpperCase()} Pick`) : 'Complete'} />
+                  <MetricPill icon={<TrendingUp className="h-4 w-4 text-emerald-300" />} label="Steps" value={`${Math.min(draftStep + 1, totalSteps)}/${totalSteps}`} />
+                </div>
+              </div>
+            </m.header>
 
-        {/* Game Settings */}
-        <div className="card mb-6">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium mb-2">
-                Rank Tier (Based on Available Data)
-              </label>
-              <select
-                value={draftState.elo}
-                onChange={(e) => setDraftState(prev => ({ ...prev, elo: e.target.value as Elo }))}
-                className="select"
+            {error && (
+              <m.div
+                variants={scaleIn}
+                className="relative overflow-hidden rounded-2xl border border-red-500/40 bg-red-500/10 px-5 py-4 text-sm text-red-200 backdrop-blur"
               >
-                <option value="low" disabled>⚪ Iron-Silver (Collect data first)</option>
-                <option value="mid">🥇 Gold Rank (100 matches available)</option>
-                <option value="high" disabled>👑 Diamond-Challenger (Collect data first)</option>
-              </select>
-            </div>
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                  <p className="flex-1">{error}</p>
+                  <button
+                    onClick={() => setError(null)}
+                    className="text-lg leading-none text-red-300 transition hover:text-red-100"
+                  >
+                    ×
+                  </button>
+                </div>
+              </m.div>
+            )}
 
-            <div className="flex-1 min-w-[200px]">
-              <label className="block text-sm font-medium mb-2">
-                Patch (Optional)
-              </label>
-              <input
-                type="text"
-                value={draftState.patch || ''}
-                onChange={(e) => setDraftState(prev => ({ ...prev, patch: e.target.value }))}
-                placeholder="e.g., 15.20"
-                className="input"
+            <DraftBoard
+              draftState={draftState}
+              currentAction={currentDraftAction as DraftAction | null}
+              draftStep={draftStep}
+              totalSteps={totalSteps}
+              draftStarted={draftStarted}
+              pickTimer={pickTimer}
+              timerActive={timerActive}
+              onToggleTimer={handleToggleTimer}
+              onStartDraft={handleStartDraft}
+              onResetDraft={handleResetDraft}
+              onRemovePick={handleRemovePickSlot}
+              onRemoveBan={handleRemoveBanSlot}
+            />
+
+            <m.section
+              variants={fadeUp}
+              className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]"
+            >
+              <RecommendationsPanel
+                currentAction={currentDraftAction as DraftAction | null}
+                recommendations={recommendations?.recommendations ?? null}
+                loading={recommendationLoading}
+                error={recommendationError}
+                lockedChampionIds={lockedChampionIds}
+                lockedChampionNames={lockedChampionNames}
+                onSelectRecommendation={handleSelectRecommendation}
+                champions={champions}
               />
-            </div>
 
-            <div className="flex items-end space-x-2">
-              <button
-                onClick={handlePredictDraft}
-                disabled={predicting}
-                className="btn btn-primary flex items-center space-x-2"
-              >
-                {predicting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Analyzing...</span>
-                  </>
-                ) : (
-                  <span>🔮 Analyze Draft</span>
-                )}
-              </button>
-
-              <button
-                onClick={handleResetDraft}
-                className="btn btn-secondary"
-              >
-                🔄 Reset
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Team Composition and AI Recommendations - Same Row */}
-        <div className="grid lg:grid-cols-3 gap-6 mb-6">
-          {/* Blue Team */}
-          <div className="card border-2 border-blue-500">
-            <div className="mb-4">
-              <h2 className="text-xl font-bold text-blue-400">Blue Team</h2>
-              <p className="text-sm text-gray-400">
-                {currentDraftAction?.team === 'blue' ? '🔴 Currently drafting...' : 'Waiting for turn'}
-              </p>
-            </div>
-            <RoleSlots
-              team="blue"
-              composition={draftState.blue}
-              bans={draftState.blueBans}
-              onUpdateComposition={(comp) => setDraftState(prev => ({ ...prev, blue: comp }))}
-              onUpdateBans={(bans) => setDraftState(prev => ({ ...prev, blueBans: bans }))}
-              currentDraftAction={currentDraftAction}
-            />
-          </div>
-
-          {/* Red Team */}
-          <div className="card border-2 border-red-500">
-            <div className="mb-4">
-              <h2 className="text-xl font-bold text-red-400">Red Team</h2>
-              <p className="text-sm text-gray-400">
-                {currentDraftAction?.team === 'red' ? '🔴 Currently drafting...' : 'Waiting for turn'}
-              </p>
-            </div>
-            <RoleSlots
-              team="red"
-              composition={draftState.red}
-              bans={draftState.redBans}
-              onUpdateComposition={(comp) => setDraftState(prev => ({ ...prev, red: comp }))}
-              onUpdateBans={(bans) => setDraftState(prev => ({ ...prev, redBans: bans }))}
-              currentDraftAction={currentDraftAction}
-            />
-          </div>
-
-          {/* AI Recommendations */}
-          {currentDraftAction && (
-            <div className="card border-2 border-gold-500">
-              <div className="mb-4">
-                <h2 className="text-xl font-bold text-gold-500 mb-2">🤖 AI Recommendations</h2>
-                <p className="text-sm text-gray-400">
-                  Get smart suggestions for {currentDraftAction.action === 'ban' ? 'bans' : 'picks'} based on current draft state
-                </p>
-              </div>
-              
-              <div className="flex flex-col gap-2">
-                {recommendationLoading && (
-                  <div className="flex items-center justify-center gap-2 text-gold-500">
-                    <Sparkles className="w-4 h-4 animate-spin" />
-                    <span className="text-sm">Analyzing...</span>
-                  </div>
-                )}
-                
-                {recommendations && !recommendationLoading && (
-                  <div className="text-sm text-gray-400 text-center">
-                    Found {recommendations.recommendations?.length || 0} recommendations
-                  </div>
-                )}
-              </div>
-
-              {/* Show recommendations inline */}
-              {recommendations && recommendations.recommendations && (
-                <div className="mt-4 space-y-2">
-                  {recommendations.recommendations.slice(0, 5).map((rec: any, index: number) => {
-                    // Find champion by ID (try both string and number comparison)
-                    const champion = champions.find(c => 
-                      c.id === rec.champion_id.toString() || 
-                      parseInt(c.id) === rec.champion_id ||
-                      c.name === rec.champion_name
-                    );
-                    
-                    // Check if champion is already picked (client-side verification)
-                    const isAlreadyPicked = 
-                      Object.values(draftState.blue).some((c: any) => c && parseInt(c.id) === rec.champion_id) ||
-                      Object.values(draftState.red).some((c: any) => c && parseInt(c.id) === rec.champion_id);
-                    
-                    // Check if champion is banned (client-side verification)
-                    const isBanned = 
-                      draftState.blueBans.some((c: any) => parseInt(c.id) === rec.champion_id) ||
-                      draftState.redBans.some((c: any) => parseInt(c.id) === rec.champion_id);
-                    
-                    // Skip this recommendation if champion is already picked or banned
-                    if (isAlreadyPicked || isBanned) {
-                      return null;
-                    }
-                    const value = currentDraftAction.action === 'ban' ? rec.threat_level : rec.win_gain;
-                    const valuePercent = value ? Math.abs(value * 100) : 0;
-                    const barWidth = Math.min(Math.max(valuePercent * 3, 5), 100);
-
-                    return (
-                      <div
-                        key={rec.champion_id}
-                        className="bg-gray-800 border border-gray-700 hover:border-gold-500 rounded-lg p-2 cursor-pointer transition group"
-                        onClick={() => {
-                          if (champion) {
-                            handleChampionSelect(champion);
-                            setShowRecommendations(false);
+              <div className="flex flex-col gap-6">
+                <m.div
+                  variants={scaleIn}
+                  className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[#0d1424]/80 p-6 backdrop-blur-xl"
+                >
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.25),transparent_60%)] opacity-50" />
+                  <div className="relative space-y-6">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="w-full max-w-sm space-y-2">
+                        <p className="text-xs uppercase tracking-[0.28em] text-white/40">Rank Model</p>
+                        <EloSelector
+                          value={draftState.elo as EloGroup}
+                          onChange={async (elo) => {
+                            setDraftState(prev => ({ ...prev, elo: elo as Elo }));
+                            setPrediction(null);
+                            setAnalysis(null);
                             setRecommendations(null);
-                          }
-                        }}
-                      >
-                        <div className="flex items-center gap-2">
-                          {/* Rank Badge */}
-                          <div className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                            index === 0 ? 'bg-gold-500 text-black' :
-                            index === 1 ? 'bg-gray-400 text-black' :
-                            index === 2 ? 'bg-amber-700 text-white' :
-                            'bg-gray-700 text-gray-300'
-                          }`}>
-                            {index + 1}
-                          </div>
-
-                          {/* Champion Portrait */}
-                          <div className="flex-shrink-0 w-8 h-8 rounded-lg overflow-hidden border border-gray-600 group-hover:border-gold-500 transition">
-                            <img
-                              src={getChampionImageUrl(champion?.name || rec.champion_name)}
-                              alt={rec.champion_name}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                console.log('Image failed for:', rec.champion_name, 'Champion found:', !!champion);
-                                e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiBmaWxsPSIjMzc0MTUxIi8+Cjx0ZXh0IHg9IjE2IiB5PSIyMCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjOUI5QjlCIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4/CjwvdGV4dD4KPC9zdmc+';
-                              }}
-                            />
-                          </div>
-
-                          {/* Champion Info */}
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-xs font-bold text-white group-hover:text-gold-500 transition truncate">
-                              {rec.champion_name}
-                            </h4>
-                            
-                            {/* Value Bar */}
-                            <div className="flex items-center gap-1 mt-1">
-                              <div className="flex-1 bg-gray-700 rounded-full h-1 overflow-hidden">
-                                <div
-                                  className={`h-full ${currentDraftAction.action === 'ban' ? 'bg-red-500' : 'bg-green-500'} transition-all duration-300`}
-                                  style={{ width: `${barWidth}%` }}
-                                />
-                              </div>
-                              <span className={`text-xs font-bold ${currentDraftAction.action === 'ban' ? 'text-red-400' : 'text-green-400'} min-w-[35px] text-right`}>
-                                {currentDraftAction.action === 'ban' ? '' : '+'}{valuePercent.toFixed(1)}%
-                              </span>
-                            </div>
-
-                            {/* Top Reason */}
-                            {rec.reasons && rec.reasons[0] && (
-                              <div className="text-xs text-gray-400 mt-1 truncate">
-                                {rec.reasons[0]}
-                              </div>
-                            )}
-                          </div>
-                        </div>
+                            setError(null);
+                            setRecommendationError(null);
+                            setShowAnalysis(false);
+                            try {
+                              await api.refreshContext(elo);
+                            } catch (err) {
+                              console.warn('Failed to refresh backend context:', err);
+                            }
+                          }}
+                        />
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                      <div className="w-full max-w-sm space-y-2">
+                        <p className="text-xs uppercase tracking-[0.28em] text-white/40">Patch Override</p>
+                        <input
+                          type="text"
+                          value={draftState.patch || ''}
+                          onChange={(e) => setDraftState(prev => ({ ...prev, patch: e.target.value }))}
+                          placeholder="15.20"
+                          className="w-full rounded-xl border border-white/20 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                        />
+                      </div>
+                    </div>
 
+                    <div className="flex flex-wrap items-center gap-4">
+                      <Button
+                        onClick={handlePredictDraft}
+                        disabled={predicting}
+                        className="flex items-center gap-2 rounded-xl border border-primary/40 bg-gradient-to-r from-primary/80 via-primary to-secondary px-6 py-3 text-xs uppercase tracking-[0.28em] text-primary-foreground shadow-[0_0_40px_rgba(124,58,237,0.35)]"
+                      >
+                        {predicting ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Calculating
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4" />
+                            Analyze Draft
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        onClick={handleResetDraft}
+                        className="rounded-xl border border-white/10 bg-black/30 px-6 py-3 text-xs uppercase tracking-[0.28em] text-white/60 hover:text-white"
+                      >
+                        Reset Board
+                      </Button>
+                    </div>
+                  </div>
+                </m.div>
 
-        {/* Prediction Results */}
-        {prediction && (
-          <div className="mb-6">
-            {/* Model Indicator */}
-            <div className="mb-4 p-3 bg-gray-800 rounded-lg border border-gray-700">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-blue-400" />
-                  <span className="text-sm font-medium text-gray-300">
-                    Active Model: {draftState.elo.toUpperCase()} ELO
-                  </span>
-                </div>
-                <div className="text-xs text-gray-500">
-                  {draftState.elo === 'low' && 'Iron, Bronze, Silver'}
-                  {draftState.elo === 'mid' && 'Gold, Platinum, Emerald'}
-                  {draftState.elo === 'high' && 'Diamond, Master, GM, Challenger'}
-                </div>
+                <m.div
+                  variants={scaleIn}
+                  className="rounded-[28px] border border-white/10 bg-[#0d1424]/60 p-6 backdrop-blur"
+                >
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <SummaryStat label="Draft Started" value={draftStarted ? 'Yes' : 'No'} />
+                    <SummaryStat label="Pending Actions" value={currentDraftAction ? `${totalSteps - draftStep - 1}` : '0'} />
+                    <SummaryStat label="Insight Ready" value={showAnalysis && analysis ? 'AI Report' : '—'} />
+                  </div>
+                </m.div>
               </div>
-            </div>
-            <PredictionCard prediction={prediction} />
-          </div>
-        )}
+            </m.section>
 
+            {prediction && (
+              <m.section
+                variants={fadeUp}
+                className="rounded-[32px] border border-white/10 bg-[#0d1424]/80 p-8 backdrop-blur-xl"
+              >
+                <PredictionCard prediction={prediction} />
+              </m.section>
+            )}
 
-        {/* Champion Picker */}
-        <ChampionPicker
-          champions={champions}
-          selectedChampions={[
-            ...Object.values(draftState.blue).filter(Boolean) as Champion[],
-            ...Object.values(draftState.red).filter(Boolean) as Champion[],
-          ]}
-          bannedChampions={[...draftState.blueBans, ...draftState.redBans]}
-          onSelectChampion={handleChampionSelect}
-          currentDraftAction={currentDraftAction}
-        />
+            <m.section
+              variants={fadeUp}
+              className="rounded-[32px] border border-white/10 bg-[#0d1424]/80 p-6 backdrop-blur-xl"
+            >
+              <ChampionPicker
+                champions={champions}
+                selectedChampions={[
+                  ...Object.values(draftState.blue).filter(Boolean) as Champion[],
+                  ...Object.values(draftState.red).filter(Boolean) as Champion[],
+                ]}
+                bannedChampions={[...draftState.blueBans, ...draftState.redBans]}
+                onSelectChampion={handleChampionSelect}
+                currentDraftAction={currentDraftAction}
+              />
+            </m.section>
 
+            {analyzing && (
+              <m.div
+                variants={fadeUp}
+                className="rounded-[32px] border border-white/10 bg-[#0d1424]/70 p-10 text-center text-white/70 backdrop-blur"
+              >
+                <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-accent" />
+                Processing post-draft reasoning…
+              </m.div>
+            )}
 
-        {/* Post-Draft Analysis */}
-        {showAnalysis && analysis && (
-          <div className="mt-8">
-            <AnalysisPanel 
-              analysis={analysis}
-              onClose={() => setShowAnalysis(false)}
-            />
-          </div>
-        )}
-
-        {/* Analysis Loading State */}
-        {analyzing && (
-          <div className="mt-8 bg-gray-800 border border-gray-700 rounded-lg p-8 text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-gold-500 mx-auto mb-4" />
-            <p className="text-gray-400">Analyzing draft composition...</p>
-          </div>
-        )}
-        </motion.div>
+            <AnimatePresence>
+              {showAnalysis && analysis && (
+                <m.section
+                  key="analysis-panel"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 20 }}
+                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                  className="rounded-[32px] border border-white/10 bg-[#0d1424]/80 p-6 backdrop-blur-xl"
+                >
+                  <AnalysisPanel analysis={analysis} onClose={() => setShowAnalysis(false)} />
+                </m.section>
+              )}
+            </AnimatePresence>
+          </m.div>
+        </LayoutGroup>
       </Container>
     </div>
   );
+}
+
+type MetricPillProps = {
+  icon: ReactNode
+  label: string
+  value: string
+}
+
+function MetricPill({ icon, label, value }: MetricPillProps) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white/70 backdrop-blur">
+      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-white/40">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <div className="mt-2 text-lg font-semibold text-white">{value}</div>
+    </div>
+  )
+}
+
+type SummaryStatProps = {
+  label: string
+  value: string
+}
+
+function SummaryStat({ label, value }: SummaryStatProps) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/25 px-4 py-3 backdrop-blur">
+      <p className="text-[11px] uppercase tracking-[0.28em] text-white/35">{label}</p>
+      <p className="mt-2 text-base font-semibold text-white/80">{value}</p>
+    </div>
+  )
 }

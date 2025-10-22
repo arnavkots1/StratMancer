@@ -7,7 +7,6 @@ import { Moon, Sun, Menu, X, Zap, BarChart3, Users, Settings } from "lucide-reac
 import { cn } from "@/lib/cn"
 import { Button } from "@/components/ui/button"
 import { Glow } from "@/components/Glow"
-import { eliteMotionPresets } from "@/lib/motion"
 
 interface SiteHeaderProps {
   className?: string

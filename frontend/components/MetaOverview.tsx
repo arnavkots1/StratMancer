@@ -1,19 +1,23 @@
-'use client';
+'use client'
 
-import { MetaSnapshot, Elo } from '@/types';
-import PatchSelector from './PatchSelector';
-import { Sparkles } from 'lucide-react';
+import Image from 'next/image'
+import { m } from 'framer-motion'
+import { Sparkles } from 'lucide-react'
+import PatchSelector from './PatchSelector'
+import { getChampionImageUrl } from '@/lib/championImages'
+import { fadeUp, scaleIn } from '@/lib/motion'
+import { MetaSnapshot, Elo } from '@/types'
 
 interface MetaOverviewProps {
-  meta: MetaSnapshot | null;
-  loading: boolean;
-  selectedElo: Elo;
-  onEloChange: (elo: Elo) => void;
-  selectedPatch?: string;
-  onPatchChange: (patch: string) => void;
+  meta: MetaSnapshot | null
+  loading: boolean
+  selectedElo: Elo
+  onEloChange: (elo: Elo) => void
+  selectedPatch?: string
+  onPatchChange: (patch: string) => void
 }
 
-const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`;
+const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`
 
 export default function MetaOverview({
   meta,
@@ -23,70 +27,87 @@ export default function MetaOverview({
   selectedPatch,
   onPatchChange,
 }: MetaOverviewProps) {
-  const availablePatches = meta?.available_patches ?? [];
-  const topChampions = meta?.champions.slice(0, 3) ?? [];
-  const lastUpdated = meta ? new Date(meta.last_updated).toLocaleDateString() : '--';
+  const availablePatches = meta?.available_patches ?? []
+  const topChampions = meta?.champions.slice(0, 3) ?? []
+  const lastUpdated = meta ? new Date(meta.last_updated).toLocaleString() : '—'
 
   return (
-    <section className="rounded-3xl bg-white/10 p-6 shadow-xl shadow-blue-900/20 backdrop-blur">
-      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="text-sm uppercase tracking-wide text-white/70">Meta Overview</p>
-          <h2 className="mt-1 text-2xl font-semibold text-white">
-            Patch {meta?.patch ?? selectedPatch ?? '—'}
-          </h2>
-          <p className="text-sm text-white/60">
-            Last updated {lastUpdated} · {meta?.total_matches ?? 0} matches analyzed
-          </p>
+    <m.section
+      variants={fadeUp}
+      className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[#0d1424]/85 p-6 backdrop-blur-xl"
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(124,58,237,0.18),transparent_60%)] opacity-80" />
+      <div className="relative space-y-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="space-y-2">
+            <p className="text-xs uppercase tracking-[0.28em] text-white/40">Meta Overview</p>
+            <h2 className="text-3xl font-semibold text-white">
+              Patch {meta?.patch ?? selectedPatch ?? '—'}
+            </h2>
+            <p className="text-sm text-white/60">
+              Last updated {lastUpdated} · {meta?.total_matches ?? 0} matches analyzed
+            </p>
+          </div>
+          <div className="w-full max-w-xl">
+            <PatchSelector
+              selectedElo={selectedElo}
+              onEloChange={onEloChange}
+              selectedPatch={selectedPatch ?? meta?.patch}
+              onPatchChange={onPatchChange}
+              patches={availablePatches}
+              disabled={loading}
+            />
+          </div>
         </div>
 
-        <PatchSelector
-          selectedElo={selectedElo}
-          onEloChange={onEloChange}
-          selectedPatch={selectedPatch ?? meta?.patch}
-          onPatchChange={onPatchChange}
-          patches={availablePatches}
-          disabled={loading}
-        />
-      </div>
-
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
-        {loading
-          ? Array.from({ length: 3 }).map((_, index) => (
-              <div
-                key={index}
-                className="h-32 rounded-2xl bg-white/5 p-4 shadow-inner shadow-black/40"
-              >
-                <div className="h-full animate-pulse rounded-xl bg-white/10" />
-              </div>
-            ))
-          : topChampions.map((champion, index) => (
-              <div
-                key={champion.champion_id}
-                className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900/80 to-slate-800/60 p-5 shadow-inner shadow-black/30"
-              >
-                <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-white/60">#{index + 1}</p>
-                    <h3 className="text-lg font-semibold text-white">
-                      {champion.champion_name}
-                    </h3>
-                    <p className="mt-1 text-sm text-white/70">
-                      Win {formatPercent(champion.win_rate)} · Pick {formatPercent(champion.pick_rate)}
-                    </p>
-                  </div>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white">
-                    <Sparkles className="h-5 w-5" />
-                  </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {loading
+            ? Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="h-40 rounded-2xl border border-white/10 bg-black/30"
+                >
+                  <div className="h-full animate-pulse rounded-2xl bg-white/10" />
                 </div>
-                <p className="mt-4 text-sm font-semibold text-emerald-300">
-                  Performance Index {(champion.performance_index * 100).toFixed(1)}
-                </p>
-              </div>
-            ))}
+              ))
+            : topChampions.map((champion, index) => (
+                <m.div
+                  key={champion.champion_id}
+                  variants={scaleIn}
+                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-[#10172a]/80 p-5 transition"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/15 via-transparent to-secondary/15 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+                  <div className="relative flex items-start justify-between gap-4">
+                    <div>
+                      <span className="text-xs uppercase tracking-[0.28em] text-white/40">#{index + 1}</span>
+                      <h3 className="mt-1 text-lg font-semibold text-white">{champion.champion_name}</h3>
+                      <p className="mt-1 text-sm text-white/60">
+                        Win {formatPercent(champion.win_rate)} · Pick {formatPercent(champion.pick_rate)}
+                      </p>
+                    </div>
+                    <div className="relative h-14 w-14 overflow-hidden rounded-xl border border-white/10 bg-black/30">
+                      <Image
+                        src={getChampionImageUrl(champion.champion_name)}
+                        alt={champion.champion_name}
+                        fill
+                        sizes="80px"
+                        className="object-cover transition duration-500 group-hover:scale-105"
+                      />
+                    </div>
+                  </div>
+                  <div className="relative mt-5 flex items-center justify-between text-sm text-white/70">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-accent" />
+                      <span>Performance Index</span>
+                    </div>
+                    <span className="text-emerald-300">
+                      {(champion.performance_index * 100).toFixed(1)}
+                    </span>
+                  </div>
+                </m.div>
+              ))}
+        </div>
       </div>
-    </section>
-  );
+    </m.section>
+  )
 }
-

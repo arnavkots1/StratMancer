@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { motion } from "framer-motion"
+import { m } from "framer-motion"
 import { cn } from "@/lib/cn"
 import { Section, Container } from "@/components/Section"
 import { eliteMotionPresets } from "@/lib/motion"
@@ -23,7 +23,7 @@ export function ProductMarquee() {
   return (
     <Section variant="glass" size="sm" className="overflow-hidden">
       <Container size="full">
-        <motion.div
+        <m.div
           initial="initial"
           animate="animate"
           variants={eliteMotionPresets.page}
@@ -36,7 +36,7 @@ export function ProductMarquee() {
           {/* Marquee Container */}
           <div className="flex overflow-hidden">
             {/* First Set */}
-            <motion.div
+            <m.div
               className="flex whitespace-nowrap"
               animate={{
                 x: [0, -100 + "%"],
@@ -62,10 +62,10 @@ export function ProductMarquee() {
                   <div className="w-2 h-2 rounded-full bg-current mx-4 opacity-50" />
                 </div>
               ))}
-            </motion.div>
+            </m.div>
             
             {/* Second Set */}
-            <motion.div
+            <m.div
               className="flex whitespace-nowrap"
               animate={{
                 x: [0, -100 + "%"],
@@ -91,9 +91,9 @@ export function ProductMarquee() {
                   <div className="w-2 h-2 rounded-full bg-current mx-4 opacity-50" />
                 </div>
               ))}
-            </motion.div>
+            </m.div>
           </div>
-        </motion.div>
+        </m.div>
       </Container>
     </Section>
   )

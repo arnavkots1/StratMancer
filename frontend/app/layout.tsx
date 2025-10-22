@@ -1,12 +1,27 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import type { ReactNode } from 'react'
+import { Space_Grotesk, Inter, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { SiteHeader } from '@/components/SiteHeader'
 import { Footer } from '@/components/Footer'
 import { cn } from '@/lib/cn'
+import { MotionProvider } from '@/components/providers/MotionProvider'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+})
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ['latin'],
+  variable: '--font-display',
+})
+
+const jetBrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+})
 
 export const metadata: Metadata = {
   title: 'StratMancer - Elite League of Legends Draft Analyzer',
@@ -48,29 +63,38 @@ export const viewport: Viewport = {
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
     <html lang="en" suppressHydrationWarning className="smooth-scroll">
-      <body className={cn(inter.className, "antialiased")}>
+      <body
+        className={cn(
+          inter.className,
+          inter.variable,
+          spaceGrotesk.variable,
+          jetBrainsMono.variable,
+          "antialiased bg-background text-foreground"
+        )}
+      >
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
         >
-          <div className="min-h-screen flex flex-col bg-background text-foreground">
-            <SiteHeader />
-            
-            <main className="flex-1">
-              {children}
-            </main>
-            
-            <Footer />
-          </div>
+          <MotionProvider>
+            <div className="min-h-screen flex flex-col">
+              <SiteHeader />
+              
+              <main className="flex-1">
+                {children}
+              </main>
+              
+              <Footer />
+            </div>
+          </MotionProvider>
         </ThemeProvider>
       </body>
     </html>
   )
 }
-

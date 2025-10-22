@@ -1,203 +1,289 @@
 "use client"
 
-import * as React from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { motion } from "framer-motion"
-import { ArrowRight, Zap, Sparkles, Play, Star, Users, TrendingUp, Shield } from "lucide-react"
-import { cn } from "@/lib/cn"
+import Image from "next/image"
+import { AnimatePresence, m, useReducedMotion } from "framer-motion"
+import { ArrowUpRight, Sparkles, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Glow, EliteGlow } from "@/components/Glow"
 import { Container } from "@/components/Section"
-import { eliteMotionPresets } from "@/lib/motion"
+import { HologramParticles } from "@/components/HologramParticles"
+import { fadeUp, hologramRotate, particleDrift, scaleIn, stagger } from "@/lib/motion"
 
-const heroStats = [
-  { label: "Champions Analyzed", value: "163+", icon: Users },
-  { label: "Win Rate Accuracy", value: "94.2%", icon: TrendingUp },
-  { label: "Response Time", value: "<200ms", icon: Zap },
-  { label: "Active Users", value: "10K+", icon: Star },
-]
+const CHAMPIONS = [
+  {
+    name: "Ahri",
+    role: "Mid Mage",
+    image: "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Ahri_0.jpg",
+  },
+  {
+    name: "Lee Sin",
+    role: "Jungle Assassin",
+    image: "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/LeeSin_0.jpg",
+  },
+  {
+    name: "Jinx",
+    role: "Bot Marksman",
+    image: "https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Jinx_0.jpg",
+  },
+] as const
 
-const heroFeatures = [
-  "Real-time draft analysis with AI-powered insights",
-  "ELO-specific recommendations for every skill level",
-  "Advanced meta tracking and champion performance",
-  "Professional-grade analytics for teams and coaches",
-]
+const HIGHLIGHTS = [
+  "Predict every phase of the draft with live win probabilities.",
+  "Adapt to any ladder with rank-aware champion intelligence.",
+  "Uncover balancing shifts with cinematic meta visualizations.",
+  "Trust recommendations sourced from millions of curated matches.",
+] as const
+
+const METRICS = [
+  { label: "Average Win Delta", value: "+8.4%", tone: "text-emerald-300" },
+  { label: "Model Confidence", value: "94.2%", tone: "text-sky-300" },
+  { label: "Response Time", value: "180ms", tone: "text-amber-300" },
+] as const
 
 export function Hero() {
-  return (
-    <section className="relative overflow-hidden min-h-screen flex items-center">
-      {/* Background Effects */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 via-secondary-500/5 to-accent-500/10" />
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary-500/20 rounded-full blur-3xl animate-float" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-secondary-500/20 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }} />
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary-500/10 to-secondary-500/10 rounded-full blur-3xl animate-pulse-slow" />
-      </div>
+  const [championIndex, setChampionIndex] = useState(0)
+  const reduceMotion = useReducedMotion()
+  const activeChampion = CHAMPIONS[championIndex]
 
-      <Container size="xl" className="relative z-10 w-full py-20">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          {/* Left Content */}
-          <motion.div
+  useEffect(() => {
+    if (reduceMotion) return
+    const interval = window.setInterval(() => {
+      setChampionIndex((index) => (index + 1) % CHAMPIONS.length)
+    }, 9000)
+
+    return () => window.clearInterval(interval)
+  }, [reduceMotion])
+
+  const hologramKey = useMemo(
+    () => `${activeChampion.name}-${championIndex}`,
+    [activeChampion.name, championIndex],
+  )
+
+  return (
+    <section className="relative isolate overflow-hidden">
+      <m.div
+        className="absolute inset-0 -z-10"
+        variants={particleDrift}
+        initial="initial"
+        animate="animate"
+      >
+        <div className="absolute inset-0 cinematic-grid opacity-60" />
+        <HologramParticles className="mix-blend-screen opacity-75" density={0.85} />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#110c1f]/60 via-transparent to-[#051019]/80" />
+        <div className="rift-fog" />
+
+        {!reduceMotion && (
+          <m.svg
+            width="960"
+            height="560"
+            viewBox="0 0 960 560"
+            preserveAspectRatio="none"
+            className="pointer-events-none absolute inset-y-0 -left-1/4"
+            initial={{ x: "-30%" }}
+            animate={{ x: "35%" }}
+            transition={{ duration: 12, ease: "easeInOut", repeat: Infinity, repeatType: "mirror" }}
+          >
+            <defs>
+              <linearGradient id="beam" x1="0%" x2="100%" y1="0%" y2="0%">
+                <stop offset="0%" stopColor="#7c3aed" stopOpacity="0" />
+                <stop offset="50%" stopColor="#06b6d4" stopOpacity="0.65" />
+                <stop offset="100%" stopColor="#fbbf24" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            <rect width="960" height="560" fill="url(#beam)" opacity="0.6" />
+          </m.svg>
+        )}
+
+        <div className="lens-flare top-[-140px] left-[-120px]" />
+        <div className="lens-flare bottom-[-220px] right-[-200px]" />
+      </m.div>
+
+      <Container size="xl" className="relative z-10 py-24 lg:py-32">
+        <div className="grid items-center gap-16 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+          <m.div
             initial="initial"
             animate="animate"
-            variants={eliteMotionPresets.page}
-            className="space-y-8"
+            variants={stagger}
+            className="space-y-10"
           >
-            {/* Badge */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-500/10 border border-primary-500/20 text-primary-400 text-sm font-medium"
+            <m.div
+              variants={fadeUp}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-white/80 backdrop-blur"
             >
-              <Sparkles className="w-4 h-4" />
-              Elite Draft Analysis Platform
-            </motion.div>
+              <Sparkles className="h-4 w-4 text-accent" />
+              StratMancer Tactical AI
+            </m.div>
 
-            {/* Main Heading */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="space-y-4"
-            >
-              <h1 className="text-5xl lg:text-7xl font-bold leading-tight">
-                <span className="gradient-text">Master</span>
-                <br />
-                <span className="text-foreground">Every Draft</span>
-              </h1>
-              <p className="text-xl text-muted-foreground max-w-2xl">
-                The ultimate League of Legends draft analysis platform powered by advanced machine learning. 
-                Make smarter picks, understand the meta, and climb the ranks with confidence.
-              </p>
-            </motion.div>
+            <div className="space-y-6">
+              <m.h1
+                variants={fadeUp}
+                className="text-balance text-4xl font-semibold leading-[1.05] text-white md:text-6xl lg:text-7xl"
+              >
+                Master the Rift with{" "}
+                <span className="text-transparent bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text">
+                  AI Precision
+                </span>
+                .
+              </m.h1>
 
-            {/* Features List */}
-            <motion.ul
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="space-y-3"
+              <m.p
+                variants={fadeUp}
+                className="max-w-2xl text-lg text-white/70 md:text-xl"
+              >
+                StratMancer is your on-demand strategist—forecasting drafts, reading the
+                meta, and guiding every decision with cinematic clarity and competitive
+                intent.
+              </m.p>
+            </div>
+
+            <m.div
+              variants={fadeUp}
+              className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6"
             >
-              {heroFeatures.map((feature, index) => (
-                <motion.li
-                  key={feature}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.5 + index * 0.1 }}
-                  className="flex items-center gap-3 text-muted-foreground"
-                >
-                  <div className="w-2 h-2 rounded-full bg-primary-500" />
-                  <span>{feature}</span>
-                </motion.li>
+              <Button
+                asChild
+                size="xl"
+                className="group relative overflow-hidden px-10 py-4 text-base shadow-[0_0_45px_rgba(124,58,237,0.4)]"
+              >
+                <Link href="/draft">
+                  <span className="flex items-center gap-3">
+                    <Zap className="h-5 w-5 text-accent transition-transform duration-200 group-hover:scale-110" />
+                    Try Draft Analyzer
+                    <ArrowUpRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-1 group-hover:-translate-y-1" />
+                  </span>
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                size="xl"
+                className="border-white/30 bg-white/5 px-10 py-4 text-base text-white/80 hover:bg-white/10"
+              >
+                <Link href="/meta">Explore Meta</Link>
+              </Button>
+            </m.div>
+
+            <m.ul variants={fadeUp} className="space-y-3 text-sm text-white/70 lg:text-base">
+              {HIGHLIGHTS.map((highlight) => (
+                <li key={highlight} className="flex items-start gap-3">
+                  <span className="mt-[6px] h-[6px] w-[6px] rounded-full bg-gradient-to-r from-primary to-secondary" />
+                  <span>{highlight}</span>
+                </li>
               ))}
-            </motion.ul>
+            </m.ul>
 
-            {/* CTA Buttons */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.8 }}
-              className="flex flex-col sm:flex-row gap-4"
+            <m.dl
+              variants={stagger}
+              className="grid gap-5 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur sm:grid-cols-3"
             >
-              <Button size="lg" className="group">
-                <Zap className="w-5 h-5 mr-2" />
-                Launch Draft Analyzer
-                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-              </Button>
-              <Button variant="outline" size="lg" className="group">
-                <Play className="w-5 h-5 mr-2" />
-                Watch Demo
-              </Button>
-            </motion.div>
+              {METRICS.map((metric) => (
+                <m.div key={metric.label} variants={fadeUp} className="space-y-2">
+                  <dt className="text-xs uppercase tracking-[0.24em] text-white/40">
+                    {metric.label}
+                  </dt>
+                  <dd className={`text-2xl font-semibold ${metric.tone}`}>{metric.value}</dd>
+                </m.div>
+              ))}
+            </m.dl>
+          </m.div>
 
-            {/* Stats */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 1 }}
-              className="grid grid-cols-2 lg:grid-cols-4 gap-6 pt-8"
-            >
-              {heroStats.map((stat, index) => {
-                const Icon = stat.icon
-                return (
-                  <motion.div
-                    key={stat.label}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 1.1 + index * 0.1 }}
-                    className="text-center"
-                  >
-                    <div className="flex items-center justify-center w-12 h-12 mx-auto mb-2 rounded-xl bg-primary-500/10 border border-primary-500/20">
-                      <Icon className="w-6 h-6 text-primary-400" />
-                    </div>
-                    <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-                    <div className="text-sm text-muted-foreground">{stat.label}</div>
-                  </motion.div>
-                )
-              })}
-            </motion.div>
-          </motion.div>
-
-          {/* Right Content - Hero Visual */}
-          <motion.div
-            initial={{ opacity: 0, x: 50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.5 }}
-            className="relative"
+          <m.div
+            initial="initial"
+            animate="animate"
+            variants={scaleIn}
+            className="relative flex justify-center"
           >
-            <EliteGlow color="#3b82f6" blur={40} spread={20} className="rounded-3xl">
-              <div className="relative p-8 rounded-3xl bg-gradient-to-br from-card/80 to-card/60 backdrop-blur-lg border border-white/20">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-3 h-3 rounded-full bg-success-500" />
-                    <span className="text-sm font-medium text-foreground">Live Draft Analysis</span>
-                  </div>
-                  <div className="px-3 py-1 rounded-full bg-primary-500/20 border border-primary-500/30">
-                    <span className="text-sm font-medium text-primary-400">Win Rate: 73%</span>
-                  </div>
-                </div>
+            <div className="relative w-full max-w-[460px] rounded-[calc(var(--radius)*1.1)] border border-white/15 bg-gradient-to-br from-white/10 via-white/5 to-white/0 p-6 shadow-[0_18px_60px_-28px_rgba(0,0,0,0.65)] backdrop-blur-xl">
+              <div className="absolute inset-0 neon-border opacity-70" />
+              <div className="relative overflow-hidden rounded-[calc(var(--radius)*0.9)] border border-white/10 bg-gradient-to-br from-[#1a2438]/85 via-[#0b101d]/90 to-[#060b14]/90">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(124,58,237,0.2),transparent_65%)] opacity-70" />
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.08)_0%,rgba(255,255,255,0)_45%)]" />
 
-                {/* Draft Board Preview */}
-                <div className="space-y-4">
-                  <div className="grid grid-cols-5 gap-3">
-                    {['Top', 'Jungle', 'Mid', 'ADC', 'Support'].map((role, index) => (
-                      <motion.div
-                        key={role}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 1.2 + index * 0.1 }}
-                        className="aspect-square rounded-xl bg-gradient-to-br from-muted/50 to-muted/30 border border-white/10 flex items-center justify-center"
-                      >
-                        <span className="text-xs font-medium text-muted-foreground">{role}</span>
-                      </motion.div>
-                    ))}
+                {reduceMotion ? (
+                  <div className="relative aspect-[4/5] w-full">
+                    <Image
+                      src={activeChampion.image}
+                      alt={activeChampion.name}
+                      fill
+                      priority
+                      sizes="(min-width: 1024px) 460px, 80vw"
+                      className="object-cover opacity-80 mix-blend-screen"
+                    />
                   </div>
+                ) : (
+                  <AnimatePresence mode="wait">
+                    <m.div
+                      key={hologramKey}
+                      variants={hologramRotate}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      className="relative aspect-[4/5] w-full"
+                    >
+                      <Image
+                        src={activeChampion.image}
+                        alt={activeChampion.name}
+                        fill
+                        priority
+                        sizes="(min-width: 1024px) 460px, 80vw"
+                        className="object-cover opacity-80 mix-blend-screen"
+                      />
+                      <div className="absolute inset-0 bg-[repeating-linear-gradient(180deg,rgba(124,58,237,0.15)_0px,rgba(124,58,237,0.15)_2px,transparent_2px,transparent_4px)] opacity-20 mix-blend-screen" />
+                    </m.div>
+                  </AnimatePresence>
+                )}
 
-                  {/* Recommendations */}
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-semibold text-foreground">Top Recommendations</h4>
-                    <div className="space-y-2">
-                      {['Aatrox', 'Vi', 'Ahri', 'Kai\'Sa', 'Rell'].map((champion, index) => (
-                        <motion.div
-                          key={champion}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 1.5 + index * 0.1 }}
-                          className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-primary-500/10 to-secondary-500/10 border border-primary-500/20"
-                        >
-                          <span className="text-sm font-medium text-foreground">{champion}</span>
-                          <span className="text-xs text-primary-400">+{index + 3}%</span>
-                        </motion.div>
-                      ))}
+                <div className="absolute inset-0" aria-hidden="true">
+                  <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#05080f] via-transparent to-transparent" />
+                  <m.div
+                    initial={{ opacity: 0, y: 24 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                    className="absolute inset-x-6 bottom-6 rounded-2xl border border-white/10 bg-white/10 p-4 backdrop-blur-xl"
+                  >
+                    <div className="flex items-center justify-between text-xs uppercase tracking-[0.24em] text-white/50">
+                      <span>Current Focus</span>
+                      <span className="text-white/40">Hologram Feed</span>
                     </div>
-                  </div>
+                    <div className="mt-3 flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-sm font-semibold text-white">{activeChampion.name}</p>
+                        <p className="text-xs text-white/60">{activeChampion.role}</p>
+                      </div>
+                      <div className="rounded-lg border border-emerald-400/50 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+                        71% favor
+                      </div>
+                    </div>
+                  </m.div>
                 </div>
               </div>
-            </EliteGlow>
-          </motion.div>
+
+              <m.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8, duration: 0.6 }}
+                className="mt-6 rounded-2xl border border-white/10 bg-white/10 p-5 backdrop-blur"
+              >
+                <div className="flex items-center justify-between text-xs uppercase tracking-[0.24em] text-white/40">
+                  <span>Live Win Probability</span>
+                  <span>Dynamic Forecast</span>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-4 text-sm text-white">
+                  <div className="space-y-2">
+                    <p className="text-white/60">Blue Side</p>
+                    <p className="text-2xl font-semibold text-emerald-300">56.8%</p>
+                    <p className="text-xs text-white/40">+3.1% synergy bonus</p>
+                  </div>
+                  <div className="space-y-2">
+                    <p className="text-white/60">Red Side</p>
+                    <p className="text-2xl font-semibold text-rose-300">43.2%</p>
+                    <p className="text-xs text-white/40">Tilt risk detected</p>
+                  </div>
+                </div>
+              </m.div>
+            </div>
+          </m.div>
         </div>
       </Container>
     </section>

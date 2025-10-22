@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { motion } from "framer-motion"
+import { m } from "framer-motion"
 import { Check, Zap, Crown, Star, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/cn"
 import { Button } from "@/components/ui/button"
@@ -77,7 +77,7 @@ export function Pricing() {
   return (
     <Section variant="default" size="lg">
       <Container size="xl">
-        <motion.div
+        <m.div
           initial="initial"
           animate="animate"
           variants={eliteMotionPresets.page}
@@ -95,13 +95,13 @@ export function Pricing() {
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
             From casual players to professional teams, we have a plan that fits your needs and budget.
           </p>
-        </motion.div>
+        </m.div>
 
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {plans.map((plan, index) => {
             const Icon = plan.icon
             return (
-              <motion.div
+              <m.div
                 key={plan.name}
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -162,7 +162,7 @@ export function Pricing() {
                       {/* Features */}
                       <ul className="space-y-4 mb-8">
                         {plan.features.map((feature, featureIndex) => (
-                          <motion.li
+                          <m.li
                             key={feature}
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
@@ -183,7 +183,7 @@ export function Pricing() {
                               )} />
                             </div>
                             <span className="text-muted-foreground">{feature}</span>
-                          </motion.li>
+                          </m.li>
                         ))}
                       </ul>
 
@@ -202,13 +202,13 @@ export function Pricing() {
                     </div>
                   </Card>
                 </EliteGlow>
-              </motion.div>
+              </m.div>
             )
           })}
         </div>
 
         {/* Additional Info */}
-        <motion.div
+        <m.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
@@ -223,7 +223,7 @@ export function Pricing() {
             <span>✓ No setup fees</span>
             <span>✓ 24/7 support</span>
           </div>
-        </motion.div>
+        </m.div>
       </Container>
     </Section>
   )

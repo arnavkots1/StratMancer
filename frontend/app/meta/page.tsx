@@ -1,15 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
-import { TrendingUp, BarChart3, Zap, AlertCircle } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { m } from 'framer-motion';
+import { TrendingUp, AlertCircle, Gauge, Activity } from 'lucide-react';
 import MetaOverview from '@/components/MetaOverview';
 import MetaTable from '@/components/MetaTable';
 import MetaTrends from '@/components/MetaTrends';
-import { Glow } from '@/components/Glow';
 import { Container } from '@/components/Section';
 import { api } from '@/lib/api';
-import { eliteMotionPresets } from '@/lib/motion';
+import { fadeUp, scaleIn } from '@/lib/motion';
 import type { Elo, MetaSnapshot, MetaTrends as MetaTrendsType } from '@/types';
 
 const DEFAULT_ELO: Elo = 'mid';
@@ -36,10 +35,11 @@ export default function MetaPage() {
     metaPromise
       .then(data => {
         if (cancelled) return;
-        setMeta(data);
+        const metaData = data as MetaSnapshot;
+        setMeta(metaData);
         setError(null);
-        if (!selectedPatch || selectedPatch !== data.patch) {
-          setSelectedPatch(data.patch);
+        if (!selectedPatch || selectedPatch !== metaData.patch) {
+          setSelectedPatch(metaData.patch);
         }
       })
       .catch(err => {
@@ -66,7 +66,7 @@ export default function MetaPage() {
       .getMetaTrends(selectedElo)
       .then(data => {
         if (cancelled) return;
-        setTrends(data);
+        setTrends(data as MetaTrendsType);
       })
       .catch(() => {
         if (cancelled) return;
@@ -88,68 +88,76 @@ export default function MetaPage() {
     setSelectedPatch(undefined);
   };
 
+  const totalChampions = meta?.champions.length ?? 0
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
-      <Container size="xl" className="py-8">
-        <motion.div
-          initial="initial"
-          animate="animate"
-          variants={eliteMotionPresets.page}
-          className="max-w-7xl mx-auto space-y-8"
-        >
-          {/* Header */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
+    <div className="min-h-screen bg-[#060911]">
+      <Container size="xl" className="py-16 lg:py-20">
+        <m.div initial="initial" animate="animate" variants={fadeUp} className="space-y-10">
+          <m.section
+            variants={scaleIn}
+            className="relative overflow-hidden rounded-[32px] border border-white/10 bg-[#0d1424]/85 p-8 backdrop-blur-xl"
           >
-            <Glow variant="secondary" className="rounded-2xl">
-              <div className="glass-card p-6 border border-secondary-500/20">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="p-2 rounded-xl bg-secondary-500/10 border border-secondary-500/20">
-                    <TrendingUp className="w-6 h-6 text-secondary-400" />
-                  </div>
-                  <h1 className="text-3xl font-bold">
-                    <span className="gradient-text">Meta Tracker</span>
-                  </h1>
-                </div>
-                <p className="text-muted-foreground">
-                  Track champion performance across ELO brackets with live pick, win, and ban rates
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(124,58,237,0.18),transparent_60%)] opacity-80" />
+            <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+              <div className="space-y-3">
+                <span className="text-xs uppercase tracking-[0.28em] text-white/40">Meta Dashboard</span>
+                <h1 className="text-3xl font-semibold text-white">Rift Trends Insight</h1>
+                <p className="max-w-xl text-sm text-white/60">
+                  Compare balance swings across patches, surface high-impact champions, and calibrate your draft prep using live ladder telemetry.
                 </p>
               </div>
-            </Glow>
-          </motion.div>
+              <div className="grid w-full gap-4 sm:grid-cols-3 lg:w-auto">
+                <MetricPill icon={<TrendingUp className="h-4 w-4 text-emerald-300" />} label="Active Champions" value={`${totalChampions}`} />
+                <MetricPill icon={<Gauge className="h-4 w-4 text-accent" />} label="Selected ELO" value={selectedElo.toUpperCase()} />
+                <MetricPill icon={<Activity className="h-4 w-4 text-sky-300" />} label="Matches" value={`${meta?.total_matches ?? 0}`} />
+              </div>
+            </div>
+          </m.section>
 
-          {/* Error Display */}
           {error && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 flex items-start gap-3"
+            <m.div
+              variants={fadeUp}
+              className="flex items-center gap-3 rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-200"
             >
-              <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
-              <p className="text-destructive flex-1">{error}</p>
-            </motion.div>
+              <AlertCircle className="h-5 w-5" />
+              <span>{error}</span>
+            </m.div>
           )}
 
-          {/* Main Content */}
-          <div className="space-y-6">
-            <MetaOverview
-              meta={meta}
-              loading={metaLoading}
-              selectedElo={selectedElo}
-              onEloChange={handleEloChange}
-              selectedPatch={selectedPatch}
-              onPatchChange={patch => setSelectedPatch(patch || undefined)}
-            />
+          <MetaOverview
+            meta={meta}
+            loading={metaLoading}
+            selectedElo={selectedElo}
+            onEloChange={handleEloChange}
+            selectedPatch={selectedPatch}
+            onPatchChange={(patch) => setSelectedPatch(patch || undefined)}
+          />
 
-            <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-              <MetaTable champions={meta?.champions ?? []} loading={metaLoading} />
-              <MetaTrends trends={trends} loading={trendsLoading} />
-            </div>
-          </div>
-        </motion.div>
+          <m.section variants={fadeUp} className="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+            <MetaTable champions={meta?.champions ?? []} loading={metaLoading} />
+            <MetaTrends trends={trends} loading={trendsLoading} />
+          </m.section>
+        </m.div>
       </Container>
     </div>
-  );
+  )
+}
+
+type MetricPillProps = {
+  icon: ReactNode
+  label: string
+  value: string
+}
+
+function MetricPill({ icon, label, value }: MetricPillProps) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-white/70 backdrop-blur">
+      <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-white/40">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <div className="mt-2 text-lg font-semibold text-white/85">{value}</div>
+    </div>
+  )
 }

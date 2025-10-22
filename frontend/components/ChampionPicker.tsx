@@ -102,7 +102,7 @@ export default function ChampionPicker({
           <>
             <h2 className="text-xl font-bold mb-2 text-green-400">Draft Complete!</h2>
             <p className="text-sm text-gray-400 mb-4">
-              All picks and bans are done. Click "Analyze Draft" above.
+              All picks and bans are done. Click &quot;Analyze Draft&quot; above.
             </p>
           </>
         )}

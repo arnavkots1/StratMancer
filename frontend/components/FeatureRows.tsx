@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { motion } from "framer-motion"
+import { m } from "framer-motion"
 import { 
   Brain, 
   Zap, 
@@ -111,7 +111,7 @@ export function FeatureRows() {
       {/* Features Grid */}
       <Section variant="default" size="lg">
         <Container size="xl">
-          <motion.div
+          <m.div
             initial="initial"
             animate="animate"
             variants={eliteMotionPresets.page}
@@ -129,13 +129,13 @@ export function FeatureRows() {
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
               From casual players to professional teams, StratMancer provides the insights you need to dominate the draft phase.
             </p>
-          </motion.div>
+          </m.div>
 
           <Grid cols={3} gap="lg">
             {features.map((feature, index) => {
               const Icon = feature.icon
               return (
-                <motion.div
+                <m.div
                   key={feature.title}
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -172,7 +172,7 @@ export function FeatureRows() {
                       </div>
                     </Card>
                   </Glow>
-                </motion.div>
+                </m.div>
               )
             })}
           </Grid>
@@ -182,7 +182,7 @@ export function FeatureRows() {
       {/* Workflow Section */}
       <Section variant="premium" size="lg">
         <Container size="xl">
-          <motion.div
+          <m.div
             initial="initial"
             animate="animate"
             variants={eliteMotionPresets.page}
@@ -200,13 +200,13 @@ export function FeatureRows() {
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
               Our advanced pipeline processes millions of matches to deliver the most accurate draft analysis available.
             </p>
-          </motion.div>
+          </m.div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {workflowSteps.map((step, index) => {
               const Icon = step.icon
               return (
-                <motion.div
+                <m.div
                   key={step.step}
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -241,7 +241,7 @@ export function FeatureRows() {
                       </Card>
                     </Glow>
                   </div>
-                </motion.div>
+                </m.div>
               )
             })}
           </div>

@@ -1,59 +1,82 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;200;300;400;500;600;700;800&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 222.2 84% 4.9%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96%;
-    --accent-foreground: 222.2 84% 4.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.75rem;
+    --background: 220 33% 96%;
+    --foreground: 220 32% 10%;
+    --card: 220 35% 98%;
+    --card-foreground: 220 32% 10%;
+    --popover: 220 35% 99%;
+    --popover-foreground: 220 32% 10%;
+    --primary: 262.1 83.3% 57.8%;
+    --primary-foreground: 218 36% 14%;
+    --secondary: 188.7 94.5% 42.7%;
+    --secondary-foreground: 215 45% 10%;
+    --muted: 220 20% 88%;
+    --muted-foreground: 218 18% 32%;
+    --accent: 43.3 96.4% 56.3%;
+    --accent-foreground: 220 32% 12%;
+    --destructive: 356.6 80.8% 57.1%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 218 20% 86%;
+    --input: 218 20% 86%;
+    --ring: 262.1 83.3% 57.8%;
+    --radius: 1.25rem;
+    --grid-major: rgba(12, 18, 30, 0.55);
+    --grid-minor: rgba(20, 30, 45, 0.28);
+    --glow-primary: rgba(124, 58, 237, 0.45);
+    --glow-secondary: rgba(6, 182, 212, 0.4);
+    --fog-overlay: rgba(14, 20, 33, 0.75);
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 84% 4.9%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 94.1%;
+    --background: 220 35.3% 6.7%;
+    --foreground: 210 27% 95%;
+    --card: 221 36% 9%;
+    --card-foreground: 210 27% 94%;
+    --popover: 220 35% 7%;
+    --popover-foreground: 210 27% 94%;
+    --primary: 262.1 83.3% 57.8%;
+    --primary-foreground: 220 36% 12%;
+    --secondary: 188.7 94.5% 42.7%;
+    --secondary-foreground: 210 36% 10%;
+    --muted: 220 28% 14%;
+    --muted-foreground: 215 18% 72%;
+    --accent: 43.3 96.4% 56.3%;
+    --accent-foreground: 215 32% 12%;
+    --destructive: 356.6 80.8% 57.1%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 218 28% 18%;
+    --input: 218 28% 18%;
+    --ring: 262.1 83.3% 57.8%;
+    --grid-major: rgba(124, 58, 237, 0.15);
+    --grid-minor: rgba(6, 182, 212, 0.08);
+    --glow-primary: rgba(124, 58, 237, 0.55);
+    --glow-secondary: rgba(6, 182, 212, 0.5);
+    --fog-overlay: rgba(11, 15, 23, 0.7);
   }
 
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans, 'Inter'), system-ui, sans-serif;
     font-feature-settings: "rlig" 1, "calt" 1;
+    background-image:
+      radial-gradient(120% 120% at 80% 0%, rgba(124, 58, 237, 0.18) 0%, transparent 55%),
+      radial-gradient(80% 80% at 0% 20%, rgba(6, 182, 212, 0.12) 0%, transparent 60%),
+      linear-gradient(160deg, rgba(10, 14, 24, 1) 0%, rgba(11, 15, 23, 0.88) 40%, rgba(6, 12, 20, 0.9) 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display, 'Space Grotesk'), 'Inter', system-ui, sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  code, pre {
+    font-family: var(--font-mono, 'JetBrains Mono'), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   }
 }
 
@@ -78,7 +101,91 @@
 
   /* Elite Glassmorphism */
   .glass {
-    @apply bg-white/5 backdrop-blur-md border border-white/10;
+    @apply border border-white/10 bg-white/5 backdrop-blur-xl;
+    background-image: linear-gradient(135deg, rgba(124, 58, 237, 0.06), rgba(6, 182, 212, 0.04));
+  }
+
+  .cinematic-surface {
+    position: relative;
+    background: linear-gradient(145deg, rgba(12, 18, 30, 0.92), rgba(15, 22, 36, 0.82));
+    border-radius: var(--radius);
+    border: 1px solid rgba(124, 58, 237, 0.15);
+    box-shadow:
+      0 0 0 1px rgba(6, 182, 212, 0.08),
+      0 18px 40px -18px rgba(6, 12, 20, 0.8);
+    overflow: hidden;
+  }
+
+  .cinematic-surface::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 20% 20%, rgba(124, 58, 237, 0.18), transparent 55%);
+    opacity: 0.8;
+    pointer-events: none;
+  }
+
+  .cinematic-grid {
+    position: relative;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      radial-gradient(circle at top, rgba(124, 58, 237, 0.18), transparent 55%);
+    background-size: 60px 60px, 60px 60px, 100% 100%;
+    background-position: -1px -1px, -1px -1px, center;
+    mask-image: radial-gradient(circle at center, rgba(0, 0, 0, 0.9), rgba(0, 0, 0, 0.2) 70%, transparent 100%);
+  }
+
+  .cinematic-grid::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 80% 10%, rgba(6, 182, 212, 0.18), transparent 55%);
+    opacity: 0.7;
+    pointer-events: none;
+  }
+
+  .neon-border {
+    position: relative;
+    border-radius: calc(var(--radius) + 0.25rem);
+  }
+
+  .neon-border::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      120deg,
+      rgba(124, 58, 237, 0.8),
+      rgba(6, 182, 212, 0.65),
+      rgba(251, 191, 36, 0.7)
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.9;
+  }
+
+  .data-mono {
+    font-family: var(--font-mono, 'JetBrains Mono'), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    letter-spacing: 0.08em;
+  }
+
+  .rift-fog {
+    position: absolute;
+    inset: 0;
+    mix-blend-mode: screen;
+    pointer-events: none;
+    background: radial-gradient(circle at 50% 20%, rgba(124, 58, 237, 0.18), transparent 45%),
+      radial-gradient(circle at 20% 80%, rgba(6, 182, 212, 0.22), transparent 55%),
+      radial-gradient(circle at 80% 85%, rgba(234, 57, 67, 0.15), transparent 65%);
+    filter: blur(48px);
+    opacity: 0.75;
   }
   
   .glass-dark {
@@ -90,34 +197,43 @@
   }
   
   .glass-button {
-    @apply glass rounded-xl px-6 py-3 font-medium transition-all duration-300;
-    @apply hover:bg-white/10 hover:scale-105 active:scale-95;
-    @apply focus:outline-none focus:ring-2 focus:ring-primary/50;
+    @apply glass rounded-xl px-6 py-3 font-medium tracking-wide uppercase transition-all duration-300;
+    @apply hover:bg-white/10 hover:translate-y-[-2px] hover:shadow-[0_12px_24px_rgba(124,58,237,0.25)];
+    @apply active:translate-y-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50;
   }
 
   /* Elite Buttons */
   .btn {
-    @apply inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-medium;
-    @apply transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2;
+    @apply inline-flex items-center justify-center rounded-xl px-6 py-3 text-sm font-semibold uppercase tracking-wide;
+    @apply transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-ring/60;
     @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    letter-spacing: 0.08em;
   }
   
   .btn-primary {
-    @apply bg-gradient-to-r from-primary-500 to-primary-600 text-white;
-    @apply hover:from-primary-600 hover:to-primary-700 hover:scale-105;
-    @apply focus:ring-primary-500 shadow-lg shadow-primary-500/25;
+    @apply relative overflow-hidden text-primary-foreground;
+    @apply bg-gradient-to-r from-primary via-primary to-secondary;
+    box-shadow: 0 0 30px 0 rgba(124, 58, 237, 0.35);
+  }
+
+  .btn-primary::after {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+    background: radial-gradient(circle at 30% 30%, rgba(251, 191, 36, 0.65), transparent 55%);
+  }
+
+  .btn-primary:hover::after {
+    @apply opacity-100;
   }
   
   .btn-secondary {
-    @apply bg-gradient-to-r from-secondary-500 to-secondary-600 text-white;
-    @apply hover:from-secondary-600 hover:to-secondary-700 hover:scale-105;
-    @apply focus:ring-secondary-500 shadow-lg shadow-secondary-500/25;
+    @apply border border-secondary/40 bg-secondary/20 text-secondary-foreground;
+    @apply hover:bg-secondary/30 hover:text-white hover:shadow-[0_0_25px_rgba(6,182,212,0.45)];
   }
   
   .btn-outline {
-    @apply border-2 border-primary-500 text-primary-400 bg-transparent;
-    @apply hover:bg-primary-500 hover:text-white hover:scale-105;
-    @apply focus:ring-primary-500;
+    @apply border border-white/20 text-white bg-transparent;
+    @apply hover:border-accent/60 hover:text-accent hover:shadow-[0_0_20px_rgba(251,191,36,0.35)];
   }
   
   .btn-ghost {
@@ -211,15 +327,24 @@
   }
 
   .champion-card {
-    @apply relative aspect-square rounded-2xl overflow-hidden cursor-pointer;
-    @apply transition-all duration-300 hover:scale-110 hover:shadow-elite;
-    @apply border-2 border-transparent;
+    @apply relative aspect-square overflow-hidden cursor-pointer transition-all duration-300 border border-white/10;
+    border-radius: calc(var(--radius) * 0.9);
+    background: linear-gradient(145deg, rgba(18, 26, 40, 0.88), rgba(9, 13, 22, 0.92));
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    transform: translateZ(0);
+  }
+
+  .champion-card:hover {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+      0 20px 40px -18px rgba(0, 0, 0, 0.6);
   }
 
   .champion-card::before {
     content: '';
-    @apply absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0;
-    @apply transition-opacity duration-300;
+    @apply absolute inset-0 opacity-0 transition-opacity duration-300;
+    background: radial-gradient(circle at 50% 20%, rgba(251, 191, 36, 0.4), transparent 65%);
   }
   
   .champion-card:hover::before {
@@ -227,7 +352,7 @@
   }
 
   .champion-card.selected {
-    @apply border-primary shadow-glow ring-2 ring-primary/20;
+    @apply border-primary shadow-[0_0_24px_rgba(124,58,237,0.4)] ring-2 ring-primary/20;
   }
 
   .champion-card.banned {
@@ -240,30 +365,30 @@
 
   /* Elite Role Slots */
   .role-slot {
-    @apply relative rounded-2xl border-2 border-dashed border-gray-600;
-    @apply bg-gray-900/20 backdrop-blur-sm transition-all duration-300;
-    @apply hover:border-primary-500 hover:bg-primary-500/10;
+    @apply relative rounded-2xl border border-white/10;
+    @apply bg-gradient-to-br from-white/5 to-transparent backdrop-blur-xl transition-all duration-300;
+    @apply hover:border-primary hover:shadow-[0_0_25px_rgba(124,58,237,0.25)];
     @apply min-h-[80px] flex items-center justify-center;
   }
 
   .role-slot.filled {
-    @apply border-solid border-primary-500 bg-primary-500/10;
+    @apply border-solid border-primary bg-primary/10;
   }
 
   .role-slot.blue {
-    @apply border-blue-500/50 bg-blue-500/5;
+    @apply border-secondary/40 bg-secondary/10;
   }
 
   .role-slot.blue.filled {
-    @apply border-blue-500 bg-blue-500/10;
+    @apply border-secondary bg-secondary/15;
   }
 
   .role-slot.red {
-    @apply border-red-500/50 bg-red-500/5;
+    @apply border-destructive/40 bg-destructive/10;
   }
 
   .role-slot.red.filled {
-    @apply border-red-500 bg-red-500/10;
+    @apply border-destructive bg-destructive/15;
   }
 
   /* Elite Loading States */
@@ -372,13 +497,36 @@
 
   /* Elite Navigation */
   .nav-link {
-    @apply flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium;
-    @apply transition-all duration-200 hover:bg-accent hover:text-accent-foreground;
-    @apply focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2;
+    @apply relative flex items-center gap-2 px-3 py-2 text-sm font-medium uppercase tracking-wide;
+    @apply transition-all duration-200 rounded-lg text-white/70;
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
   }
 
   .nav-link.active {
-    @apply bg-accent text-accent-foreground;
+    @apply text-white;
+  }
+
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: -4px;
+    height: 2px;
+    background: linear-gradient(90deg, rgba(124, 58, 237, 0.8), rgba(6, 182, 212, 0.8));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.25s ease;
+  }
+
+  .nav-link:hover,
+  .nav-link:focus-visible {
+    color: white;
+  }
+
+  .nav-link:hover::after,
+  .nav-link.active::after,
+  .nav-link:focus-visible::after {
+    transform: scaleX(1);
   }
 
   /* Elite Dialogs */
@@ -510,5 +658,17 @@
 
   .hover-border-glow {
     @apply transition-all duration-300 hover:border-primary-500/50 hover:shadow-lg hover:shadow-primary-500/25;
+  }
+
+  .lens-flare {
+    position: absolute;
+    inset: auto;
+    width: 480px;
+    height: 480px;
+    pointer-events: none;
+    background: radial-gradient(circle at 50% 50%, rgba(251, 191, 36, 0.28), transparent 60%);
+    filter: blur(60px);
+    opacity: 0.65;
+    mix-blend-mode: screen;
   }
 }
