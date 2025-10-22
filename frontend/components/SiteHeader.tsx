@@ -2,8 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useTheme } from "next-themes"
-import { Moon, Sun, Menu, X, Zap, BarChart3, Users, Settings } from "lucide-react"
+import { Menu, X, Zap, BarChart3, Users, Settings } from "lucide-react"
 import { cn } from "@/lib/cn"
 import { Button } from "@/components/ui/button"
 import { Glow } from "@/components/Glow"
@@ -19,17 +18,7 @@ const navigation = [
 ]
 
 export function SiteHeader({ className }: SiteHeaderProps) {
-  const [mounted, setMounted] = React.useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false)
-  const { theme, setTheme } = useTheme()
-
-  React.useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) {
-    return null
-  }
 
   return (
     <header className={cn("sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60", className)}>
@@ -63,19 +52,8 @@ export function SiteHeader({ className }: SiteHeaderProps) {
             })}
           </nav>
 
-          {/* Theme Toggle & Mobile Menu */}
+          {/* Mobile Menu */}
           <div className="flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="relative"
-            >
-              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-              <span className="sr-only">Toggle theme</span>
-            </Button>
-
             {/* Mobile Menu Button */}
             <Button
               variant="ghost"

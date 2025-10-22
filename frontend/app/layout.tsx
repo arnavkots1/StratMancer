@@ -5,6 +5,8 @@ import './globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { SiteHeader } from '@/components/SiteHeader'
 import { Footer } from '@/components/Footer'
+import { CookieConsent } from '@/components/CookieConsent'
+import { AnalyticsProvider } from '@/components/providers/AnalyticsProvider'
 import { cn } from '@/lib/cn'
 import { MotionProvider } from '@/components/providers/MotionProvider'
 
@@ -83,15 +85,19 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <MotionProvider>
-            <div className="min-h-screen flex flex-col">
-              <SiteHeader />
+            <AnalyticsProvider>
+              <div className="min-h-screen flex flex-col">
+                <SiteHeader />
+                
+                <main className="flex-1">
+                  {children}
+                </main>
+                
+                <Footer />
+              </div>
               
-              <main className="flex-1">
-                {children}
-              </main>
-              
-              <Footer />
-            </div>
+              <CookieConsent />
+            </AnalyticsProvider>
           </MotionProvider>
         </ThemeProvider>
       </body>

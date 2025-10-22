@@ -26,8 +26,8 @@ type DraftBoardProps = {
   onToggleTimer: () => void
   onStartDraft: () => void
   onResetDraft: () => void
-  onRemovePick: (team: "blue" | "red", role: keyof TeamComposition) => void
-  onRemoveBan: (team: "blue" | "red", index: number) => void
+  onRemovePick: (_team: "blue" | "red", _role: keyof TeamComposition) => void
+  onRemoveBan: (_team: "blue" | "red", _index: number) => void
 }
 
 const ROLES: Array<{ key: keyof TeamComposition; label: string }> = [
