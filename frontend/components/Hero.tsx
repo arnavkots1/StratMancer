@@ -7,7 +7,7 @@ import { ArrowRight, Zap, Sparkles, Play, Star, Users, TrendingUp, Shield } from
 import { cn } from "@/lib/cn"
 import { Button } from "@/components/ui/button"
 import { Glow, EliteGlow } from "@/components/Glow"
-import { Section, Container } from "@/components/Section"
+import { Container } from "@/components/Section"
 import { eliteMotionPresets } from "@/lib/motion"
 
 const heroStats = [
@@ -26,7 +26,7 @@ const heroFeatures = [
 
 export function Hero() {
   return (
-    <Section variant="hero" size="full" className="relative overflow-hidden">
+    <section className="relative overflow-hidden min-h-screen flex items-center">
       {/* Background Effects */}
       <div className="absolute inset-0 -z-10">
         <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 via-secondary-500/5 to-accent-500/10" />
@@ -35,8 +35,8 @@ export function Hero() {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-r from-primary-500/10 to-secondary-500/10 rounded-full blur-3xl animate-pulse-slow" />
       </div>
 
-      <Container size="xl" className="relative z-10">
-        <div className="grid lg:grid-cols-2 gap-12 items-center min-h-screen py-20">
+      <Container size="xl" className="relative z-10 w-full py-20">
+        <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left Content */}
           <motion.div
             initial="initial"
@@ -200,6 +200,6 @@ export function Hero() {
           </motion.div>
         </div>
       </Container>
-    </Section>
+    </section>
   )
 }

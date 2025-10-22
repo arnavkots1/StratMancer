@@ -1,11 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-
+import { motion } from 'framer-motion';
+import { TrendingUp, BarChart3, Zap, AlertCircle } from 'lucide-react';
 import MetaOverview from '@/components/MetaOverview';
 import MetaTable from '@/components/MetaTable';
 import MetaTrends from '@/components/MetaTrends';
+import { Glow } from '@/components/Glow';
+import { Container } from '@/components/Section';
 import { api } from '@/lib/api';
+import { eliteMotionPresets } from '@/lib/motion';
 import type { Elo, MetaSnapshot, MetaTrends as MetaTrendsType } from '@/types';
 
 const DEFAULT_ELO: Elo = 'mid';
@@ -85,47 +89,67 @@ export default function MetaPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Meta Tracker</h1>
-          <p className="text-gray-400">
-            Track champion performance across ELO brackets with live pick, win, and ban rates
-          </p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
+      <Container size="xl" className="py-8">
+        <motion.div
+          initial="initial"
+          animate="animate"
+          variants={eliteMotionPresets.page}
+          className="max-w-7xl mx-auto space-y-8"
+        >
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <Glow variant="secondary" className="rounded-2xl">
+              <div className="glass-card p-6 border border-secondary-500/20">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-xl bg-secondary-500/10 border border-secondary-500/20">
+                    <TrendingUp className="w-6 h-6 text-secondary-400" />
+                  </div>
+                  <h1 className="text-3xl font-bold">
+                    <span className="gradient-text">Meta Tracker</span>
+                  </h1>
+                </div>
+                <p className="text-muted-foreground">
+                  Track champion performance across ELO brackets with live pick, win, and ban rates
+                </p>
+              </div>
+            </Glow>
+          </motion.div>
 
-        {/* Error Display */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-900/20 border border-red-800 rounded-lg text-red-400">
-            {error}
-          </div>
-        )}
-
-      <main className="mx-auto max-w-7xl pb-16">
-        <div className="space-y-8">
-          <MetaOverview
-            meta={meta}
-            loading={metaLoading}
-            selectedElo={selectedElo}
-            onEloChange={handleEloChange}
-            selectedPatch={selectedPatch}
-            onPatchChange={patch => setSelectedPatch(patch || undefined)}
-          />
-
+          {/* Error Display */}
           {error && (
-            <div className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
-              {error}
-            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 flex items-start gap-3"
+            >
+              <AlertCircle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+              <p className="text-destructive flex-1">{error}</p>
+            </motion.div>
           )}
 
-          <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-            <MetaTable champions={meta?.champions ?? []} loading={metaLoading} />
-            <MetaTrends trends={trends} loading={trendsLoading} />
+          {/* Main Content */}
+          <div className="space-y-6">
+            <MetaOverview
+              meta={meta}
+              loading={metaLoading}
+              selectedElo={selectedElo}
+              onEloChange={handleEloChange}
+              selectedPatch={selectedPatch}
+              onPatchChange={patch => setSelectedPatch(patch || undefined)}
+            />
+
+            <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+              <MetaTable champions={meta?.champions ?? []} loading={metaLoading} />
+              <MetaTrends trends={trends} loading={trendsLoading} />
+            </div>
           </div>
-        </div>
-      </main>
-      </div>
+        </motion.div>
+      </Container>
     </div>
   );
 }

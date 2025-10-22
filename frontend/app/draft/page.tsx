@@ -1,15 +1,23 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { AlertCircle, Loader2, Sparkles } from 'lucide-react';
+import { AlertCircle, Loader2, Sparkles, Zap, Shield, TrendingUp, Target, RefreshCw } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import ChampionPicker from '@/components/ChampionPicker';
 import RoleSlots from '@/components/RoleSlots';
 import PredictionCard from '@/components/PredictionCard';
 import RecommendationCard from '@/components/RecommendationCard';
 import AnalysisPanel from '@/components/AnalysisPanel';
 import EloSelector, { type EloGroup } from '@/components/EloSelector';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Glow } from '@/components/Glow';
+import { Container } from '@/components/Section';
 import { api } from '@/lib/api';
 import { getChampionImageUrl } from '@/lib/championImages';
+import { cn } from '@/lib/cn';
+import { eliteMotionPresets } from '@/lib/motion';
 import type { 
   DraftState, 
   Champion, 
@@ -419,18 +427,32 @@ export default function DraftPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-16">
-        <div className="flex flex-col items-center justify-center space-y-4">
-          <Loader2 className="w-12 h-12 text-gold-500 animate-spin" />
-          <p className="text-gray-400">Loading champion data...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col items-center justify-center space-y-4"
+        >
+          <div className="relative">
+            <Loader2 className="w-16 h-16 text-primary-500 animate-spin" />
+            <div className="absolute inset-0 w-16 h-16 bg-primary-500/20 rounded-full blur-xl animate-pulse" />
+          </div>
+          <p className="text-lg text-muted-foreground">Loading champion data...</p>
+          <p className="text-sm text-muted-foreground/60">Preparing your draft experience</p>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
+      <Container size="xl" className="py-8">
+        <motion.div 
+          initial="initial"
+          animate="animate"
+          variants={eliteMotionPresets.page}
+          className="max-w-7xl mx-auto space-y-6"
+        >
         {/* Header with Draft Controls */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
@@ -848,7 +870,8 @@ export default function DraftPage() {
             <p className="text-gray-400">Analyzing draft composition...</p>
           </div>
         )}
-      </div>
+        </motion.div>
+      </Container>
     </div>
   );
 }

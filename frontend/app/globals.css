@@ -409,4 +409,106 @@
   .dialog-description {
     @apply text-sm text-muted-foreground;
   }
+
+  /* ===== RESPONSIVE DESIGN UTILITIES ===== */
+  .container-responsive {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+
+  .grid-responsive {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+
+  .text-responsive {
+    @apply text-sm sm:text-base lg:text-lg;
+  }
+
+  .heading-responsive {
+    @apply text-2xl sm:text-3xl lg:text-4xl xl:text-5xl;
+  }
+
+  /* ===== PERFORMANCE OPTIMIZATIONS ===== */
+  .gpu-accelerated {
+    @apply transform-gpu will-change-transform;
+  }
+
+  .smooth-scroll {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Reduce motion for users who prefer it */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* ===== MOBILE-FIRST RESPONSIVE BREAKPOINTS ===== */
+  @media (max-width: 640px) {
+    .hero-stat {
+      @apply text-center;
+    }
+
+    .nav-link {
+      @apply text-base px-3 py-2;
+    }
+  }
+
+  /* ===== PRINT STYLES ===== */
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+
+    * {
+      background: transparent !important;
+      color: black !important;
+      box-shadow: none !important;
+      text-shadow: none !important;
+    }
+  }
+
+  /* ===== ACCESSIBILITY ENHANCEMENTS ===== */
+  .focus-visible-ring {
+    @apply focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  /* ===== LOADING STATES ===== */
+  .skeleton-shimmer {
+    @apply animate-shimmer bg-gradient-to-r from-muted via-muted-foreground/10 to-muted bg-[length:200%_100%];
+  }
+
+  .loading-pulse {
+    @apply animate-pulse-slow;
+  }
+
+  /* ===== PREMIUM HOVER EFFECTS ===== */
+  .hover-lift {
+    @apply transition-all duration-300 hover:scale-105 hover:shadow-elite;
+  }
+
+  .hover-glow {
+    @apply transition-all duration-300 hover:shadow-glow;
+  }
+
+  .hover-border-glow {
+    @apply transition-all duration-300 hover:border-primary-500/50 hover:shadow-lg hover:shadow-primary-500/25;
+  }
 }

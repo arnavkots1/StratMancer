@@ -4,6 +4,7 @@ import './globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { SiteHeader } from '@/components/SiteHeader'
 import { Footer } from '@/components/Footer'
+import { cn } from '@/lib/cn'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -50,8 +51,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+    <html lang="en" suppressHydrationWarning className="smooth-scroll">
+      <body className={cn(inter.className, "antialiased")}>
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
