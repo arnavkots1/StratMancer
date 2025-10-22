@@ -1,13 +1,14 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useCallback } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { AnimatePresence, m, useReducedMotion } from "framer-motion"
+import { m, useReducedMotion } from "framer-motion"
 import { ArrowUpRight, Sparkles, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Container } from "@/components/Section"
-import { fadeUp, hologramRotate, particleDrift, scaleIn, stagger } from "@/lib/motion"
+import { fadeUp, particleDrift, scaleIn, stagger } from "@/lib/motion"
+// import { trackUserInteraction, trackFeatureUsage } from "@/lib/analytics"
 import {
   getFavorPercentage,
   getLandingData,
@@ -69,19 +70,18 @@ export function Hero() {
     }
   }, [])
 
+  // Champion rotation for hologram - optimized with useCallback
+  const rotateChampion = useCallback(() => {
+    if (champions.length === 0) return
+    setChampionIndex((index) => (index + 1) % champions.length)
+  }, [champions.length])
+
   useEffect(() => {
     if (reduceMotion || champions.length === 0) return
-    const interval = window.setInterval(() => {
-      setChampionIndex((index) => (index + 1) % champions.length)
-    }, 6000) // Set to 6 seconds per champion (at least 5 seconds as requested)
-
+    const interval = window.setInterval(rotateChampion, 6000) // Set to 6 seconds per champion (at least 5 seconds as requested)
     return () => window.clearInterval(interval)
-  }, [reduceMotion, champions.length])
+  }, [rotateChampion, reduceMotion, champions.length])
 
-  const hologramKey = useMemo(
-    () => `${activeChampion.name}-${championIndex}`,
-    [activeChampion.name, championIndex],
-  )
 
   // Create metrics array from real data
   const realMetrics = useMemo(() => {
@@ -304,45 +304,19 @@ export function Hero() {
             <div className="relative w-full max-w-[460px] rounded-[calc(var(--radius)*1.1)] border border-white/15 bg-gradient-to-br from-white/15 via-white/10 to-transparent p-6 shadow-[0_18px_60px_-28px_rgba(0,0,0,0.65)]">
               <div className="absolute inset-0 neon-border opacity-70" />
               <div className="relative overflow-hidden rounded-[calc(var(--radius)*0.9)] border border-white/10 bg-black/5">
-                {reduceMotion ? (
-                  <div className="relative aspect-[4/5] w-full">
-                    <Image
-                      src={activeChampion.image}
-                      alt={activeChampion.name}
-                      fill
-                      priority
-                      sizes="(min-width: 1024px) 460px, 80vw"
-                      className="object-cover object-top brightness-110"
-                      quality={100}
-                      loading="eager"
-                      unoptimized={false}
-                    />
-                  </div>
-                ) : (
-                  <AnimatePresence mode="wait">
-                    <m.div
-                      key={hologramKey}
-                      variants={hologramRotate}
-                      initial="initial"
-                      animate="animate"
-                      exit="exit"
-                      className="relative aspect-[4/5] w-full"
-                    >
-                      <Image
-                        src={activeChampion.image}
-                        alt={activeChampion.name}
-                        fill
-                        priority
-                        sizes="(min-width: 1024px) 460px, 80vw"
-                        className="object-cover object-center brightness-110"
-                        style={{ objectPosition: 'center 20%' }}
-                        quality={100}
-                        loading="eager"
-                        unoptimized={true}
-                      />
-                    </m.div>
-                  </AnimatePresence>
-                )}
+                <div className="relative aspect-[4/5] w-full">
+                  <Image
+                    src={activeChampion.image}
+                    alt={activeChampion.name}
+                    fill
+                    priority
+                    sizes="(min-width: 1024px) 460px, 80vw"
+                    className="object-cover object-top brightness-110"
+                    style={{ objectPosition: 'center 10%' }}
+                    quality={95}
+                    loading="eager"
+                  />
+                </div>
 
                 <div className="absolute inset-0" aria-hidden="true">
                   <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#05080f] via-transparent to-transparent" />
