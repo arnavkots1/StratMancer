@@ -23,14 +23,14 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-semibold mb-4">1. Acceptance of Terms</h2>
             <p className="text-muted-foreground leading-relaxed">
-              By accessing and using StratMancer ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
+              By accessing and using RiftAI ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.
             </p>
           </section>
 
           <section>
             <h2 className="text-2xl font-semibold mb-4">2. Description of Service</h2>
             <p className="text-muted-foreground leading-relaxed">
-              StratMancer is a League of Legends draft analysis tool that provides AI-powered predictions and recommendations for champion selections. The service analyzes draft compositions and provides win probability estimates based on machine learning models.
+              RiftAI is a League of Legends draft analysis tool that provides AI-powered predictions and recommendations for champion selections. The service analyzes draft compositions and provides win probability estimates based on machine learning models.
             </p>
           </section>
 
@@ -55,7 +55,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-semibold mb-4">4. Intellectual Property</h2>
             <p className="text-muted-foreground leading-relaxed mb-4">
-              The Service and its original content, features, and functionality are and will remain the exclusive property of StratMancer and its licensors. The Service is protected by copyright, trademark, and other laws.
+              The Service and its original content, features, and functionality are and will remain the exclusive property of RiftAI and its licensors. The Service is protected by copyright, trademark, and other laws.
             </p>
             <p className="text-muted-foreground leading-relaxed">
               League of Legends and all related content are trademarks of Riot Games, Inc. We are not affiliated with or endorsed by Riot Games.
@@ -76,7 +76,7 @@ export default function TermsPage() {
 
             <h3 className="text-xl font-medium mb-3">5.3 Limitation of Liability</h3>
             <p className="text-muted-foreground leading-relaxed">
-              To the maximum extent permitted by law, StratMancer shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses.
+              To the maximum extent permitted by law, RiftAI shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses.
             </p>
           </section>
 
@@ -117,7 +117,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-semibold mb-4">10. Governing Law</h2>
             <p className="text-muted-foreground leading-relaxed">
-              These Terms shall be interpreted and governed by the laws of the jurisdiction in which StratMancer operates, without regard to its conflict of law provisions.
+              These Terms shall be interpreted and governed by the laws of the jurisdiction in which RiftAI operates, without regard to its conflict of law provisions.
             </p>
           </section>
 

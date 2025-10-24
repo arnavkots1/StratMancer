@@ -513,7 +513,7 @@ export default function DraftPage() {
                     Holographic Draft Command Window
                   </h1>
                   <p className="max-w-xl text-sm text-white/65 md:text-base">
-                    Coordinate bans and picks with StratMancer&apos;s predictive engine. Watch AI reasoning unfold
+                    Coordinate bans and picks with RiftAI&apos;s predictive engine. Watch AI reasoning unfold
                     as we forecast every matchup pivot in real-time.
                   </p>
                 </div>

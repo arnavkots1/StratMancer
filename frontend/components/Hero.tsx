@@ -227,7 +227,7 @@ export function Hero() {
                 variants={fadeUp}
                 className="max-w-2xl text-lg text-white/70 md:text-xl"
               >
-                StratMancer is your on-demand strategist—forecasting drafts, reading the
+                RiftAI is your on-demand strategist—forecasting drafts, reading the
                 meta, and guiding every decision with cinematic clarity and competitive
                 intent.
               </m.p>

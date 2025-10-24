@@ -81,7 +81,7 @@ export default function ContactPage() {
             variants={fadeUp}
             className="text-muted-foreground text-lg max-w-2xl mx-auto"
           >
-            Have questions about StratMancer? We'd love to hear from you. 
+            Have questions about RiftAI? We'd love to hear from you. 
             Send us a message and we'll respond as soon as possible.
           </m.p>
         </m.div>

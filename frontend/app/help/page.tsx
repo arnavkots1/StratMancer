@@ -22,7 +22,7 @@ const faqCategories = [
       },
       {
         question: 'What ELO levels are supported?',
-        answer: 'StratMancer supports three ELO tiers: Low (Iron-Gold), Mid (Platinum-Diamond), and High (Master+). Each tier has its own trained model to provide accurate predictions for your skill level.'
+        answer: 'RiftAI supports three ELO tiers: Low (Iron-Gold), Mid (Platinum-Diamond), and High (Master+). Each tier has its own trained model to provide accurate predictions for your skill level.'
       },
       {
         question: 'How accurate are the predictions?',
@@ -68,7 +68,7 @@ const faqCategories = [
       },
       {
         question: 'Are there any browser requirements?',
-        answer: 'StratMancer works best on modern browsers (Chrome, Firefox, Safari, Edge) with JavaScript enabled. We recommend using the latest version of your preferred browser for the best experience.'
+        answer: 'RiftAI works best on modern browsers (Chrome, Firefox, Safari, Edge) with JavaScript enabled. We recommend using the latest version of your preferred browser for the best experience.'
       }
     ]
   },
@@ -80,8 +80,8 @@ const faqCategories = [
     bgColor: 'bg-orange-100',
     questions: [
       {
-        question: 'Do I need an account to use StratMancer?',
-        answer: 'No account is required! StratMancer is free to use without registration. All your preferences are stored locally in your browser.'
+        question: 'Do I need an account to use RiftAI?',
+        answer: 'No account is required! RiftAI is free to use without registration. All your preferences are stored locally in your browser.'
       },
       {
         question: 'How is my data protected?',
@@ -141,9 +141,9 @@ export default function HelpPage() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold gradient-text mb-6">Help Center</h1>
+          <h1 className="text-5xl font-bold gradient-text mb-6">RiftAI Help Center</h1>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-            Find answers to common questions, learn how to use StratMancer effectively, 
+            Find answers to common questions, learn how to use RiftAI effectively, 
             and get the support you need.
           </p>
         </div>
@@ -182,7 +182,7 @@ export default function HelpPage() {
             </div>
             <h3 className="text-lg font-semibold mb-2">Video Tutorials</h3>
             <p className="text-muted-foreground text-sm mb-4">
-              Watch step-by-step guides to master StratMancer features.
+              Watch step-by-step guides to master RiftAI features.
             </p>
             <Button variant="outline" className="w-full" disabled>
               Coming Soon
@@ -195,7 +195,7 @@ export default function HelpPage() {
             </div>
             <h3 className="text-lg font-semibold mb-2">User Guide</h3>
             <p className="text-muted-foreground text-sm mb-4">
-              Comprehensive guide covering all StratMancer features and tips.
+              Comprehensive guide covering all RiftAI features and tips.
             </p>
             <Button variant="outline" className="w-full" disabled>
               Coming Soon
@@ -282,7 +282,7 @@ export default function HelpPage() {
         <Card className="p-8 mt-12 text-center bg-gradient-to-r from-primary/5 to-secondary/5">
           <h2 className="text-2xl font-bold mb-4">Still Need Help?</h2>
           <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
-            Our support team is available to help you get the most out of StratMancer. 
+            Our support team is available to help you get the most out of RiftAI. 
             Contact us and we'll get back to you within 24 hours.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

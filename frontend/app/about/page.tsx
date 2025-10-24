@@ -73,7 +73,7 @@ export default function AboutPage() {
             <h2 className="text-3xl font-bold mb-6">Our Story</h2>
             <div className="space-y-4 text-muted-foreground leading-relaxed">
               <p>
-                StratMancer was born from a simple observation: League of Legends draft phase is one of the most 
+                RiftAI was born from a simple observation: League of Legends draft phase is one of the most 
                 critical moments in any match, yet most players lack the tools to make informed decisions.
               </p>
               <p>
@@ -192,7 +192,7 @@ export default function AboutPage() {
         <div className="text-center mt-16">
           <h2 className="text-3xl font-bold mb-4">Ready to Improve Your Drafts?</h2>
           <p className="text-lg text-muted-foreground mb-8">
-            Join thousands of players who are already using StratMancer to make smarter picks
+            Join thousands of players who are already using RiftAI to make smarter picks
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a 

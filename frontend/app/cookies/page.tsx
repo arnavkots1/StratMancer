@@ -32,7 +32,7 @@ export default function CookiePolicyPage() {
           <section>
             <h2 className="text-2xl font-semibold mb-4">2. How We Use Cookies</h2>
             <p className="text-muted-foreground leading-relaxed mb-6">
-              StratMancer uses cookies to enhance your experience, analyze usage patterns, and improve our service. We categorize cookies into the following types:
+              RiftAI uses cookies to enhance your experience, analyze usage patterns, and improve our service. We categorize cookies into the following types:
             </p>
 
             <div className="grid md:grid-cols-2 gap-6">

@@ -9,8 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Settings, Palette, Bell, Shield } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'Settings - StratMancer',
-  description: 'Manage your StratMancer preferences and settings',
+  title: 'Settings - RiftAI',
+  description: 'Manage your RiftAI preferences and settings',
 }
 
 export default function SettingsPage() {
@@ -21,7 +21,7 @@ export default function SettingsPage() {
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold gradient-text mb-4">Settings</h1>
           <p className="text-muted-foreground text-lg">
-            Customize your StratMancer experience
+            Customize your RiftAI experience
           </p>
         </div>
 
@@ -34,7 +34,7 @@ export default function SettingsPage() {
               </div>
               <div>
                 <h2 className="text-xl font-semibold">Appearance</h2>
-                <p className="text-muted-foreground text-sm">Customize the look and feel of StratMancer</p>
+                <p className="text-muted-foreground text-sm">Customize the look and feel of RiftAI</p>
               </div>
             </div>
 
