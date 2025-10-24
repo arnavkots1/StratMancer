@@ -7,7 +7,7 @@ import { SiteHeader } from '@/components/SiteHeader'
 import { Footer } from '@/components/Footer'
 import { CookieConsent } from '@/components/CookieConsent'
 import { AnalyticsProvider } from '@/components/providers/AnalyticsProvider'
-import { cn } from '@/lib/cn'
+import { cn } from '../lib/cn'
 import { MotionProvider } from '@/components/providers/MotionProvider'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 

@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { getChampionImageUrl } from '@/lib/championImages';
+import { getChampionImageUrl } from '../lib/championImages';
 import type { Champion } from '@/types';
 
 interface ChampionRecommendation {

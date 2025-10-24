@@ -4,8 +4,8 @@ import Image from 'next/image'
 import { m } from 'framer-motion'
 import { Sparkles } from 'lucide-react'
 import PatchSelector from './PatchSelector'
-import { getChampionImageUrl } from '@/lib/championImages'
-import { fadeUp, scaleIn } from '@/lib/motion'
+import { getChampionImageUrl } from '../lib/championImages'
+import { fadeUp, scaleIn } from '../lib/motion'
 import { MetaSnapshot, Elo } from '@/types'
 
 interface MetaOverviewProps {

@@ -2,10 +2,10 @@
 
 import React, { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { initializeAnalytics, trackPageView, trackSessionStart, trackSessionEnd } from '@/lib/analytics'
-import { initPerformanceMonitoring } from '@/lib/performance'
-import { initSecurityMonitoring } from '@/lib/security'
-import { initMonitoring } from '@/lib/monitoring'
+import { initializeAnalytics, trackPageView, trackSessionStart, trackSessionEnd } from '../../lib/analytics'
+import { initPerformanceMonitoring } from '../../lib/performance'
+import { initSecurityMonitoring } from '../../lib/security'
+import { initMonitoring } from '../../lib/monitoring'
 
 interface AnalyticsProviderProps {
   children: React.ReactNode

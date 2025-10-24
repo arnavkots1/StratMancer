@@ -3,7 +3,7 @@
 import type { ElementType } from 'react'
 import { Trophy, ShieldHalf, Sparkles } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { cn } from '@/lib/cn'
+import { cn } from '../lib/cn'
 import { Elo } from '@/types'
 
 interface PatchSelectorProps {

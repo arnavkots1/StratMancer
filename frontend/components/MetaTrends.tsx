@@ -12,7 +12,7 @@ import {
 import { m } from 'framer-motion'
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react'
 import type { MetaTrends as MetaTrendsType } from '@/types'
-import { fadeUp } from '@/lib/motion'
+import { fadeUp } from '../lib/motion'
 
 interface MetaTrendsProps {
   trends: MetaTrendsType | null

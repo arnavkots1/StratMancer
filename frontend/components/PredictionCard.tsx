@@ -4,8 +4,8 @@ import { useMemo, useState } from 'react'
 import { AnimatePresence, m } from 'framer-motion'
 import { AlertCircle, Gauge, Sparkles, TrendingDown, TrendingUp } from 'lucide-react'
 import type { PredictionResponse } from '@/types'
-import { fadeUp, scaleIn } from '@/lib/motion'
-import { cn } from '@/lib/cn'
+import { fadeUp, scaleIn } from '../lib/motion'
+import { cn } from '../lib/cn'
 
 type Mode = 'calibrated' | 'raw'
 

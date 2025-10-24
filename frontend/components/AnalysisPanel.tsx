@@ -3,8 +3,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { m, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { ChevronDown, ChevronUp, Target, Shield, Swords, TrendingUp, Clock, Zap } from 'lucide-react';
-import { fadeUp } from '@/lib/motion';
-import { cn } from '@/lib/cn';
+import { fadeUp } from '../lib/motion';
+import { cn } from '../lib/cn';
 
 interface AnalysisData {
   summary: {

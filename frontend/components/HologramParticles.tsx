@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useReducedMotion } from 'framer-motion'
-import { cn } from '@/lib/cn'
+import { cn } from '../lib/cn'
 
 type HologramParticlesProps = {
   className?: string

@@ -2,7 +2,7 @@
 
 import { Ban, X } from 'lucide-react';
 import type { Champion, TeamComposition, Team, Role } from '@/types';
-import { getChampionImageUrl } from '@/lib/championImages';
+import { getChampionImageUrl } from '../lib/championImages';
 
 interface RoleSlotsProps {
   team: Team;

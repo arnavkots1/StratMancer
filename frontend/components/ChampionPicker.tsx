@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { Search, X } from 'lucide-react';
 import type { Champion, Role } from '@/types';
-import { getChampionImageUrl } from '@/lib/championImages';
+import { getChampionImageUrl } from '../lib/championImages';
 
 interface ChampionPickerProps {
   champions: Champion[];

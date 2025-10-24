@@ -7,8 +7,8 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Settings, Shield, BarChart3, Target, X, Check } from 'lucide-react'
 import { m, AnimatePresence } from 'framer-motion'
-import { trackCookieConsent } from '@/lib/analytics'
-import { initializeAnalytics } from '@/lib/analytics'
+import { trackCookieConsent } from '../lib/analytics'
+import { initializeAnalytics } from '../lib/analytics'
 
 interface CookiePreferences {
   essential: boolean

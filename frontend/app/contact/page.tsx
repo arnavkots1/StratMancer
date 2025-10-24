@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Mail, Send, CheckCircle, AlertCircle } from 'lucide-react'
 import { m } from 'framer-motion'
-import { fadeUp, stagger } from '@/lib/motion'
+import { fadeUp, stagger } from '../../lib/motion'
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
