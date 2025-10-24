@@ -127,13 +127,14 @@ const nextConfig = {
   },
   // Reduce bundle size and improve cold start
   webpack: (config, { isServer, dev }) => {
-    // Add explicit path resolution
+    // Add explicit path resolution - use process.cwd() for Vercel compatibility
+    const projectRoot = process.cwd();
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': require('path').resolve(__dirname),
-      '@/lib': require('path').resolve(__dirname, 'lib'),
-      '@/components': require('path').resolve(__dirname, 'components'),
-      '@/app': require('path').resolve(__dirname, 'app'),
+      '@': projectRoot,
+      '@/lib': require('path').resolve(projectRoot, 'lib'),
+      '@/components': require('path').resolve(projectRoot, 'components'),
+      '@/app': require('path').resolve(projectRoot, 'app'),
     };
 
     if (!isServer) {
