@@ -7,7 +7,7 @@ import { cn } from "@/lib/cn"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Glow, EliteGlow } from "@/components/Glow"
+import { EliteGlow } from "@/components/Glow"
 import { Section, Container } from "@/components/Section"
 import { eliteMotionPresets } from "@/lib/motion"
 

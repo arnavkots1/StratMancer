@@ -3,6 +3,29 @@
 @tailwind utilities;
 
 @layer base {
+  /* Mobile optimizations */
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  
+  /* Improve touch targets on mobile */
+  button, a, input, select, textarea {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Prevent zoom on input focus on iOS */
+  input, select, textarea {
+    font-size: 16px;
+  }
+  
   :root {
     --background: 220 33% 96%;
     --foreground: 220 32% 10%;
@@ -437,6 +460,37 @@
   /* Elite Gradient Utilities */
   .gradient-text {
     @apply bg-gradient-to-r from-primary-400 to-secondary-400 bg-clip-text text-transparent;
+  }
+  
+  /* Mobile-specific utilities */
+  .mobile-padding {
+    @apply px-4 sm:px-6 lg:px-8;
+  }
+  
+  .mobile-text {
+    @apply text-sm sm:text-base;
+  }
+  
+  .mobile-heading {
+    @apply text-2xl sm:text-3xl lg:text-4xl;
+  }
+  
+  .mobile-grid {
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6;
+  }
+  
+  .mobile-flex {
+    @apply flex flex-col sm:flex-row gap-4 sm:gap-6;
+  }
+  
+  /* Touch-friendly spacing */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  /* Mobile-optimized cards */
+  .mobile-card {
+    @apply p-4 sm:p-6 rounded-xl sm:rounded-2xl;
   }
 
   .gradient-border {

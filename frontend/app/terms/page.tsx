@@ -135,8 +135,8 @@ export default function TermsPage() {
             </p>
             <div className="mt-4 p-4 bg-muted rounded-lg">
               <p className="text-muted-foreground">
-                <strong>Email:</strong> <a href="mailto:legal@stratmancer.com" className="text-primary hover:underline">legal@stratmancer.com</a><br />
-                <strong>General Inquiries:</strong> <a href="mailto:contact@stratmancer.com" className="text-primary hover:underline">contact@stratmancer.com</a>
+                <strong>Email:</strong> <a href="mailto:riftai@outlook.com" className="text-primary hover:underline">riftai@outlook.com</a><br />
+                <strong>General Inquiries:</strong> <a href="mailto:riftai@outlook.com" className="text-primary hover:underline">riftai@outlook.com</a>
               </p>
             </div>
           </section>

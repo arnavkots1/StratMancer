@@ -3,11 +3,11 @@ import type { Metadata } from 'next'
 import { Container } from '@/components/Section'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Brain, Zap, Target, Users, Award, TrendingUp } from 'lucide-react'
+import { Brain, Zap, Target, Users, TrendingUp } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'About Us - StratMancer',
-  description: 'Learn about StratMancer - The ultimate League of Legends draft analysis platform powered by machine learning',
+  title: 'About Us - RiftAI',
+  description: 'Learn about RiftAI - The ultimate League of Legends draft analysis platform powered by machine learning',
 }
 
 export default function AboutPage() {
@@ -16,7 +16,7 @@ export default function AboutPage() {
       <div className="max-w-6xl mx-auto">
         {/* Hero Section */}
         <div className="text-center mb-16">
-          <h1 className="text-5xl font-bold gradient-text mb-6">About StratMancer</h1>
+          <h1 className="text-5xl font-bold gradient-text mb-6">About RiftAI</h1>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
             We're revolutionizing League of Legends draft analysis with cutting-edge machine learning, 
             providing players with the insights they need to make smarter picks and climb the ranks.
@@ -42,7 +42,7 @@ export default function AboutPage() {
             </div>
             <h3 className="text-xl font-semibold mb-3">AI-Powered Analysis</h3>
             <p className="text-muted-foreground">
-              Advanced machine learning models trained on millions of matches to provide accurate win probability predictions.
+              Advanced machine learning models trained on thousands of matches to provide accurate win probability predictions.
             </p>
           </Card>
 
@@ -77,12 +77,13 @@ export default function AboutPage() {
                 critical moments in any match, yet most players lack the tools to make informed decisions.
               </p>
               <p>
-                As passionate League players and data scientists, we recognized the potential of machine learning 
-                to transform draft analysis. We spent months collecting and analyzing millions of matches, 
-                building sophisticated models that understand the complex interactions between champions, roles, and team compositions.
+                As passionate League players, we recognized the potential of machine learning 
+                to transform draft analysis. We spent months collecting and analyzing thousands of matches, 
+                building models that understand the complex interactions between champions, roles, and team compositions.
+                However, we are not stopping at these features and plan to come with some new innovative features. 
               </p>
               <p>
-                Today, StratMancer serves thousands of players worldwide, helping them make smarter picks, 
+                We want to help thousands of players worldwide, helping them make smarter picks, 
                 understand the meta, and ultimately improve their gameplay through data-driven insights.
               </p>
             </div>
@@ -96,16 +97,6 @@ export default function AboutPage() {
               </div>
               <p className="text-muted-foreground">
                 Built by players, for players. Our features are developed based on real community feedback and needs.
-              </p>
-            </Card>
-
-            <Card className="p-6">
-              <div className="flex items-center mb-4">
-                <Award className="w-6 h-6 text-secondary mr-3" />
-                <h3 className="text-xl font-semibold">Proven Results</h3>
-              </div>
-              <p className="text-muted-foreground">
-                Our models achieve high accuracy rates and are continuously improved with the latest match data.
               </p>
             </Card>
 
@@ -163,10 +154,6 @@ export default function AboutPage() {
           <Card className="p-6 text-center">
             <div className="text-3xl font-bold text-accent mb-2">3</div>
             <p className="text-muted-foreground">ELO Tiers</p>
-          </Card>
-          <Card className="p-6 text-center">
-            <div className="text-3xl font-bold text-primary mb-2">99.9%</div>
-            <p className="text-muted-foreground">Uptime</p>
           </Card>
         </div>
 

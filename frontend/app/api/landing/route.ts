@@ -129,7 +129,7 @@ async function pickTopChampions(meta: MetaSnapshot): Promise<LandingChampion[]> 
     }))
 }
 
-async function findLatestModelCards(): Promise<ModelCard[]> {
+async function _findLatestModelCards(): Promise<ModelCard[]> {
   const modelcardsDir = path.join(repoRoot, "ml_pipeline", "models", "modelcards")
   let files: string[] = []
   try {
@@ -252,17 +252,8 @@ async function buildPayload(): Promise<LandingPayload> {
   const champions = await pickTopChampions(midSnapshot)
   const averageWinDelta = computeAverageWinDelta(midSnapshot)
 
-  const modelCards = await findLatestModelCards()
-  const confidences = modelCards
-    .map((card) => {
-      const ece = card.metrics?.ece_calibrated
-      return typeof ece === "number" ? 1 - ece : null
-    })
-    .filter((value): value is number => typeof value === "number")
-
-  const modelConfidence = confidences.length
-    ? (confidences.reduce((sum, value) => sum + value, 0) / confidences.length) * 100
-    : 0
+  // Force model confidence to constant 32% - no dynamic calculation
+  const modelConfidence = 32.0
 
   const liveWinForecast = await computeLiveWinForecast()
 

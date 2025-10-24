@@ -30,7 +30,7 @@ export default function RoleSlots({
   currentDraftAction,
 }: RoleSlotsProps) {
   const teamColor = team === 'blue' ? 'blue' : 'red';
-  const teamName = team === 'blue' ? 'Blue Team' : 'Red Team';
+  const _teamName = team === 'blue' ? 'Blue Team' : 'Red Team';
 
   const removeChampion = (role: keyof TeamComposition) => {
     onUpdateComposition({

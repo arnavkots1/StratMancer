@@ -9,6 +9,7 @@ import { CookieConsent } from '@/components/CookieConsent'
 import { AnalyticsProvider } from '@/components/providers/AnalyticsProvider'
 import { cn } from '@/lib/cn'
 import { MotionProvider } from '@/components/providers/MotionProvider'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -26,12 +27,12 @@ const jetBrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'StratMancer - Elite League of Legends Draft Analyzer',
+  title: 'RiftAI - Elite League of Legends Draft Analyzer',
   description: 'AI-powered draft analysis and win prediction for League of Legends with elite UI and advanced machine learning',
   keywords: ['League of Legends', 'Draft Analysis', 'Win Prediction', 'AI', 'Machine Learning', 'Elite UI', 'Premium Design'],
-  authors: [{ name: 'StratMancer Team' }],
-  creator: 'StratMancer',
-  publisher: 'StratMancer',
+  authors: [{ name: 'RiftAI Team' }],
+  creator: 'RiftAI',
+  publisher: 'RiftAI',
   robots: {
     index: true,
     follow: true,
@@ -39,16 +40,16 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://stratmancer.com',
-    title: 'StratMancer - Elite League of Legends Draft Analyzer',
+    url: 'https://riftai.com',
+    title: 'RiftAI - Elite League of Legends Draft Analyzer',
     description: 'AI-powered draft analysis and win prediction for League of Legends with elite UI and advanced machine learning',
-    siteName: 'StratMancer',
+    siteName: 'RiftAI',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'StratMancer - Elite League of Legends Draft Analyzer',
+    title: 'RiftAI - Elite League of Legends Draft Analyzer',
     description: 'AI-powered draft analysis and win prediction for League of Legends with elite UI and advanced machine learning',
-    creator: '@stratmancer',
+    creator: '@riftai',
   },
 }
 
@@ -86,17 +87,19 @@ export default function RootLayout({
         >
           <MotionProvider>
             <AnalyticsProvider>
-              <div className="min-h-screen flex flex-col">
-                <SiteHeader />
+              <ErrorBoundary>
+                <div className="min-h-screen flex flex-col">
+                  <SiteHeader />
+                  
+                  <main className="flex-1">
+                    {children}
+                  </main>
+                  
+                  <Footer />
+                </div>
                 
-                <main className="flex-1">
-                  {children}
-                </main>
-                
-                <Footer />
-              </div>
-              
-              <CookieConsent />
+                <CookieConsent />
+              </ErrorBoundary>
             </AnalyticsProvider>
           </MotionProvider>
         </ThemeProvider>

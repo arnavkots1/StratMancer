@@ -236,8 +236,8 @@ export default function CookiePolicyPage() {
             </p>
             <div className="mt-4 p-4 bg-muted rounded-lg">
               <p className="text-muted-foreground">
-                <strong>Email:</strong> <a href="mailto:privacy@stratmancer.com" className="text-primary hover:underline">privacy@stratmancer.com</a><br />
-                <strong>Cookie Questions:</strong> <a href="mailto:cookies@stratmancer.com" className="text-primary hover:underline">cookies@stratmancer.com</a>
+                <strong>Email:</strong> <a href="mailto:riftai@outlook.com" className="text-primary hover:underline">riftai@outlook.com</a><br />
+                <strong>Cookie Questions:</strong> <a href="mailto:riftai@outlook.com" className="text-primary hover:underline">riftai@outlook.com</a>
               </p>
             </div>
           </section>

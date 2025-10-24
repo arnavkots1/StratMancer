@@ -23,6 +23,7 @@ const MetaTrends = dynamic(() => import('@/components/MetaTrends'), {
 import { Container } from '@/components/Section';
 import { api } from '@/lib/api';
 import { fadeUp, scaleIn } from '@/lib/motion';
+import { DataWarning } from '@/components/DataWarning';
 import type { Elo, MetaSnapshot, MetaTrends as MetaTrendsType } from '@/types';
 
 const DEFAULT_ELO: Elo = 'mid';
@@ -128,6 +129,9 @@ export default function MetaPage() {
               </div>
             </div>
           </m.section>
+
+          {/* Data Warning */}
+          <DataWarning variant="warning" />
 
           {error && (
             <m.div

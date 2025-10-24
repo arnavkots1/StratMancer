@@ -42,7 +42,7 @@ export function AnalyticsProvider({ children }: AnalyticsProviderProps) {
       clearTimeout(initTimer)
       window.removeEventListener('beforeunload', handleBeforeUnload)
     }
-  }, [])
+  }, [pathname])
 
   useEffect(() => {
     // Track page views on route changes

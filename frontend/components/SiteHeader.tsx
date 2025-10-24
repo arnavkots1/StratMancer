@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { Menu, X, Zap, BarChart3, Users, Settings } from "lucide-react"
+import { Menu, X, Zap, BarChart3, Users, Settings, Mail } from "lucide-react"
 import { cn } from "@/lib/cn"
 import { Button } from "@/components/ui/button"
 import { Glow } from "@/components/Glow"
@@ -14,6 +14,7 @@ interface SiteHeaderProps {
 const navigation = [
   { name: 'Draft Analyzer', href: '/draft', icon: BarChart3 },
   { name: 'Meta Tracker', href: '/meta', icon: Users },
+  { name: 'Contact', href: '/contact', icon: Mail },
   { name: 'Settings', href: '/settings', icon: Settings },
 ]
 
@@ -30,7 +31,7 @@ export function SiteHeader({ className }: SiteHeaderProps) {
               <Glow variant="premium" className="rounded-xl p-2">
                 <Zap className="h-6 w-6 text-primary" />
               </Glow>
-              <span className="text-xl font-bold gradient-text">StratMancer</span>
+              <span className="text-xl font-bold gradient-text">RiftAI</span>
             </Link>
           </div>
 

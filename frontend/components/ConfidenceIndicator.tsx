@@ -21,9 +21,9 @@ export function ConfidenceIndicator({
   const confidencePercentage = Math.round(confidence * 100);
   const isLowConfidence = confidencePercentage < 30;
   const isMediumConfidence = confidencePercentage >= 30 && confidencePercentage < 60;
-  const isHighConfidence = confidencePercentage >= 60;
+  const _isHighConfidence = confidencePercentage >= 60;
 
-  const getConfidenceColor = () => {
+  const _getConfidenceColor = () => {
     if (isLowConfidence) return "text-amber-400";
     if (isMediumConfidence) return "text-blue-400";
     return "text-emerald-400";

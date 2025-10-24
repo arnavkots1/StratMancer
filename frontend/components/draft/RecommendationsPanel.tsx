@@ -26,7 +26,7 @@ type RecommendationsPanelProps = {
   error: string | null
   lockedChampionIds: Set<number>
   lockedChampionNames: Set<string>
-  onSelectRecommendation: (championId: number) => void
+  onSelectRecommendation: (_championId: number) => void
   champions: Champion[]
 }
 
@@ -119,7 +119,7 @@ export function RecommendationsPanel({
                 priority
                 quality={90}
                 decoding="async"
-                onError={(e) => {
+                onError={(_e) => {
                   console.log(`Failed to load recommendation image: ${recommendation.champion_name}`);
                 }}
               />

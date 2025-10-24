@@ -8,7 +8,7 @@ export type EloGroup = 'low' | 'mid' | 'high';
 
 interface EloSelectorProps {
   value: EloGroup;
-  onChange: (elo: EloGroup) => void | Promise<void>;
+  onChange: (_elo: EloGroup) => void | Promise<void>;
   className?: string;
 }
 

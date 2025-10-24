@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Settings, Palette, Bell, Shield, BarChart3, Download, Trash2 } from 'lucide-react'
+import { Settings, Palette, Bell, Shield } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Settings - StratMancer',
@@ -186,8 +186,8 @@ export default function SettingsPage() {
             </div>
           </Card>
 
-          {/* Data Management */}
-          <Card className="p-6">
+          {/* Data Management - Temporarily disabled */}
+          {/* <Card className="p-6">
             <div className="flex items-center mb-6">
               <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 mr-4">
                 <BarChart3 className="w-5 h-5 text-orange-500" />
@@ -232,7 +232,7 @@ export default function SettingsPage() {
                 </Button>
               </div>
             </div>
-          </Card>
+          </Card> */}
 
           {/* Save Button */}
           <div className="flex justify-end">

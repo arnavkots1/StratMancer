@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
 import { AlertCircle, Loader2, Sparkles, Shield, TrendingUp } from 'lucide-react';
-import { AnimatePresence, LayoutGroup, m } from 'framer-motion';
+import { LayoutGroup, m } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import EloSelector, { type EloGroup } from '@/components/EloSelector';
 
@@ -17,10 +17,6 @@ const PredictionCard = dynamic(() => import('@/components/PredictionCard'), {
   ssr: false
 });
 
-const AnalysisPanel = dynamic(() => import('@/components/AnalysisPanel'), {
-  loading: () => <div className="flex items-center justify-center p-4"><div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>,
-  ssr: false
-});
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Container } from '@/components/Section';
@@ -29,6 +25,7 @@ import { fadeUp, scaleIn } from '@/lib/motion';
 import { DraftBoard, type DraftAction } from '@/components/draft/DraftBoard';
 import { RecommendationsPanel } from '@/components/draft/RecommendationsPanel';
 import { ConfidenceIndicator } from '@/components/ConfidenceIndicator';
+import { DataWarning } from '@/components/DataWarning';
 import type { 
   DraftState, 
   Champion, 
@@ -76,10 +73,6 @@ export default function DraftPage() {
   const [recommendationLoading, setRecommendationLoading] = useState(false);
   const [recommendationError, setRecommendationError] = useState<string | null>(null);
 
-  // Analysis state
-  const [showAnalysis, setShowAnalysis] = useState(false);
-  const [analysis, setAnalysis] = useState<any>(null);
-  const [analyzing, setAnalyzing] = useState(false);
   // Require explicit start to begin any draft interactions
   const [draftStarted, setDraftStarted] = useState<boolean>(false);
 
@@ -262,8 +255,6 @@ export default function DraftPage() {
       const result = await api.predictDraft(requestData as any);
       setPrediction(result as PredictionResponse);
       
-      // Automatically trigger analysis after prediction
-      handleAnalyzeDraft(requestData, result as PredictionResponse);
     } catch (err: any) {
       console.error('Prediction failed:', err);
       setError(err.message || 'Prediction failed. Please try again.');
@@ -272,26 +263,6 @@ export default function DraftPage() {
     }
   };
 
-  const handleAnalyzeDraft = async (draftData: any, predictionResult: PredictionResponse) => {
-    try {
-      setAnalyzing(true);
-      
-      const analysisData = {
-        ...draftData,
-        blue_win_prob: predictionResult.blue_win_prob,
-        red_win_prob: predictionResult.red_win_prob,
-      };
-
-      const result = await api.analyzeDraft(analysisData);
-      setAnalysis(result);
-      setShowAnalysis(true);
-    } catch (err: any) {
-      console.error('Analysis failed:', err);
-      // Don't show error to user - analysis is optional
-    } finally {
-      setAnalyzing(false);
-    }
-  };
 
   const handleGetRecommendations = useCallback(async () => {
     if (!currentDraftAction) return;
@@ -450,8 +421,6 @@ export default function DraftPage() {
     setPickTimer(30);
     setTimerActive(false);
     setRecommendations(null);
-    setShowAnalysis(false);
-    setAnalysis(null);
   };
 
   const handleChampionSelect = (champion: Champion) => {
@@ -556,6 +525,9 @@ export default function DraftPage() {
               </div>
             </m.header>
 
+            {/* Data Warning */}
+            <DataWarning variant="warning" />
+
             {/* Confidence Indicator */}
             <m.div
               variants={fadeUp}
@@ -637,11 +609,9 @@ export default function DraftPage() {
                           onChange={async (elo) => {
                             setDraftState(prev => ({ ...prev, elo: elo as Elo }));
                             setPrediction(null);
-                            setAnalysis(null);
                             setRecommendations(null);
                             setError(null);
                             setRecommendationError(null);
-                            setShowAnalysis(false);
                             try {
                               await api.refreshContext(elo);
                             } catch (err) {
@@ -698,7 +668,7 @@ export default function DraftPage() {
                   <div className="grid gap-4 sm:grid-cols-3">
                     <SummaryStat label="Draft Started" value={draftStarted ? 'Yes' : 'No'} />
                     <SummaryStat label="Pending Actions" value={currentDraftAction ? `${totalSteps - draftStep - 1}` : '0'} />
-                    <SummaryStat label="Insight Ready" value={showAnalysis && analysis ? 'AI Report' : '—'} />
+                    <SummaryStat label="Insight Ready" value="—" />
                   </div>
                 </m.div>
               </div>
@@ -729,30 +699,7 @@ export default function DraftPage() {
               />
             </m.section>
 
-            {analyzing && (
-              <m.div
-                variants={fadeUp}
-                className="rounded-[32px] border border-white/10 bg-[#0d1424]/70 p-10 text-center text-white/70 backdrop-blur"
-              >
-                <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-accent" />
-                Processing post-draft reasoning…
-              </m.div>
-            )}
 
-            <AnimatePresence>
-              {showAnalysis && analysis && (
-                <m.section
-                  key="analysis-panel"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 20 }}
-                  transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                  className="rounded-[32px] border border-white/10 bg-[#0d1424]/80 p-6 backdrop-blur-xl"
-                >
-                  <AnalysisPanel analysis={analysis} onClose={() => setShowAnalysis(false)} />
-                </m.section>
-              )}
-            </AnimatePresence>
           </m.div>
         </LayoutGroup>
       </Container>

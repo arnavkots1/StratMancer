@@ -35,8 +35,10 @@ const nextConfig = {
   // Performance optimizations
   experimental: {
     optimizePackageImports: ['lucide-react', 'framer-motion'],
-    // Improve cold start
+    // Improve cold start and reduce memory usage
     serverComponentsExternalPackages: ['@radix-ui/react-icons'],
+    // Reduce memory usage in development
+    memoryBasedWorkersCount: true,
     turbo: {
       rules: {
         '*.svg': {
@@ -54,6 +56,9 @@ const nextConfig = {
   },
   // Security headers
   async headers() {
+    const isDev = process.env.NODE_ENV === 'development'
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000'
+    
     return [
       {
         source: '/(.*)',
@@ -67,14 +72,14 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: https://ddragon.leagueoflegends.com https://www.google-analytics.com https://images.unsplash.com",
-              "connect-src 'self' https://www.google-analytics.com https://analytics.google.com",
+              `connect-src 'self' ${apiBase} https://www.google-analytics.com https://analytics.google.com`,
               "frame-src 'none'",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
               "frame-ancestors 'none'",
-              "upgrade-insecure-requests"
-            ].join('; ')
+              isDev ? "" : "upgrade-insecure-requests"
+            ].filter(Boolean).join('; ')
           },
           // Strict Transport Security
           {
@@ -131,17 +136,25 @@ const nextConfig = {
       };
     }
     
-    // Optimize for development cold start
+    // Optimize for development cold start and memory usage
     if (dev) {
       config.optimization = {
         ...config.optimization,
         splitChunks: {
           chunks: 'all',
+          maxSize: 244000, // Limit chunk size to reduce memory usage
           cacheGroups: {
             vendor: {
               test: /[\\/]node_modules[\\/]/,
               name: 'vendors',
               chunks: 'all',
+              maxSize: 200000, // Smaller vendor chunks
+            },
+            common: {
+              name: 'common',
+              minChunks: 2,
+              chunks: 'all',
+              maxSize: 100000, // Smaller common chunks
             },
           },
         },

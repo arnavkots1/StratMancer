@@ -91,7 +91,7 @@ export default function PrivacyPage() {
               <li><strong>Right to Object:</strong> Object to processing of your personal data</li>
             </ul>
             <p className="text-muted-foreground leading-relaxed mt-4">
-              To exercise these rights, please contact us at <a href="mailto:privacy@stratmancer.com" className="text-primary hover:underline">privacy@stratmancer.com</a>
+              To exercise these rights, please contact us at <a href="mailto:riftai@outlook.com" className="text-primary hover:underline">riftai@outlook.com</a>
             </p>
           </section>
 
@@ -137,8 +137,8 @@ export default function PrivacyPage() {
             </p>
             <div className="mt-4 p-4 bg-muted rounded-lg">
               <p className="text-muted-foreground">
-                <strong>Email:</strong> <a href="mailto:privacy@stratmancer.com" className="text-primary hover:underline">privacy@stratmancer.com</a><br />
-                <strong>Data Protection Officer:</strong> <a href="mailto:dpo@stratmancer.com" className="text-primary hover:underline">dpo@stratmancer.com</a>
+                <strong>Email:</strong> <a href="mailto:riftai@outlook.com" className="text-primary hover:underline">riftai@outlook.com</a><br />
+                <strong>Data Protection Officer:</strong> <a href="mailto:riftai@outlook.com" className="text-primary hover:underline">riftai@outlook.com</a>
               </p>
             </div>
           </section>

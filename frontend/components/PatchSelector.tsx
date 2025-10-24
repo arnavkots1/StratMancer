@@ -8,9 +8,9 @@ import { Elo } from '@/types'
 
 interface PatchSelectorProps {
   selectedElo: Elo
-  onEloChange: (elo: Elo) => void
+  onEloChange: (_elo: Elo) => void
   selectedPatch?: string
-  onPatchChange: (patch: string) => void
+  onPatchChange: (_patch: string) => void
   patches: string[]
   disabled?: boolean
 }

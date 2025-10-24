@@ -198,7 +198,7 @@ export function FeatureRows() {
               <span className="text-foreground">to Insights</span>
             </h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-4">
-              Our advanced pipeline processes millions of matches to deliver the most accurate draft analysis available.
+              Our advanced pipeline processes thousands of matches to deliver the most accurate draft analysis available.
             </p>
           </m.div>
 

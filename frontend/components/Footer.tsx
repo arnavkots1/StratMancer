@@ -20,6 +20,7 @@ const footerLinks = {
   ],
   support: [
     { name: 'Help Center', href: '/help' },
+    { name: 'Contact', href: '/contact' },
   ],
   legal: [
     { name: 'Privacy', href: '/privacy' },
@@ -29,7 +30,7 @@ const footerLinks = {
 }
 
 const socialLinks = [
-  { name: 'Email', href: 'mailto:contact@stratmancer.com', icon: Mail },
+  { name: 'Email', href: 'mailto:riftai@outlook.com', icon: Mail },
 ]
 
 export function Footer({ className }: FooterProps) {
@@ -44,13 +45,13 @@ export function Footer({ className }: FooterProps) {
               <Glow variant="premium" className="rounded-xl p-2">
                 <Zap className="h-6 w-6 text-primary" />
               </Glow>
-              <span className="text-xl font-bold gradient-text">StratMancer</span>
+              <span className="text-xl font-bold gradient-text">RiftAI</span>
             </div>
-            <p className="text-muted-foreground mb-6 max-w-md">
+            <p className="text-muted-foreground mb-6 max-w-md text-center lg:text-left">
               The ultimate League of Legends draft analysis platform powered by machine learning. 
               Make smarter picks, understand the meta, and climb the ranks.
             </p>
-            <div className="flex space-x-4">
+            <div className="flex justify-center lg:justify-start space-x-4">
               {socialLinks.map((social) => {
                 const Icon = social.icon
                 return (

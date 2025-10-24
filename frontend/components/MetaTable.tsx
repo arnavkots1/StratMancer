@@ -178,7 +178,7 @@ export default function MetaTable({ champions, loading }: MetaTableProps) {
 
 interface FocusSegmentProps {
   focus: FocusFilter
-  onFocusChange: (focus: FocusFilter) => void
+  onFocusChange: (_focus: FocusFilter) => void
 }
 
 function FocusSegment({ focus, onFocusChange }: FocusSegmentProps) {

@@ -19,8 +19,8 @@ import {
 const HIGHLIGHTS = [
   "Predict every phase of the draft with live win probabilities.",
   "Adapt to any ladder with rank-aware champion intelligence.",
-  "Uncover balancing shifts with cinematic meta visualizations.",
-  "Trust recommendations sourced from millions of curated matches.",
+  "Uncover balancing shifts with meta visualizations.",
+  "Trust recommendations sourced from thousands of curated matches.",
 ] as const
 
 export function Hero() {
@@ -208,7 +208,7 @@ export function Hero() {
               className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-white/80 backdrop-blur"
             >
               <Sparkles className="h-4 w-4 text-accent" />
-              StratMancer Tactical AI
+              RiftAI Tactical Intelligence
             </m.div>
 
             <div className="space-y-6">
@@ -313,7 +313,7 @@ export function Hero() {
                     sizes="(min-width: 1024px) 460px, 80vw"
                     className="object-cover object-top brightness-110"
                     style={{ objectPosition: 'center 10%' }}
-                    quality={95}
+                    quality={75}
                     loading="eager"
                   />
                 </div>

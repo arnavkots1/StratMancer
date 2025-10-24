@@ -12,9 +12,9 @@ interface MetaOverviewProps {
   meta: MetaSnapshot | null
   loading: boolean
   selectedElo: Elo
-  onEloChange: (elo: Elo) => void
+  onEloChange: (_elo: Elo) => void
   selectedPatch?: string
-  onPatchChange: (patch: string) => void
+  onPatchChange: (_patch: string) => void
 }
 
 const formatPercent = (value: number) => `${(value * 100).toFixed(1)}%`

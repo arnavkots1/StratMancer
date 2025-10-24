@@ -22,7 +22,7 @@ interface RecommendationCardProps {
   champions: Champion[];
   loading?: boolean;
   error?: string;
-  onSelect: (championId: number) => void;
+  onSelect: (_championId: number) => void;
   onClose: () => void;
 }
 
@@ -134,7 +134,7 @@ export default function RecommendationCard({
             const value = mode === 'pick' ? rec.win_gain : rec.threat_level;
             const valuePercent = value ? Math.abs(value * 100) : 0;
             const barWidth = Math.min(Math.max(valuePercent * 2, 10), 100);
-            const isPositive = value ? value > 0 : false;
+            const _isPositive = value ? value > 0 : false;
 
             return (
               <div

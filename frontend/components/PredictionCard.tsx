@@ -216,7 +216,7 @@ const defaultFallbacks = [
 
 type ToggleProps = {
   mode: Mode
-  onModeChange: (mode: Mode) => void
+  onModeChange: (_mode: Mode) => void
 }
 
 function ToggleGroup({ mode, onModeChange }: ToggleProps) {
