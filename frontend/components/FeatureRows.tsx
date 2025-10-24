@@ -127,7 +127,7 @@ export function FeatureRows() {
               <span className="text-foreground">for Every Player</span>
             </h2>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              From casual players to professional teams, StratMancer provides the insights you need to dominate the draft phase.
+              From casual players to professional teams, RiftAI provides the insights you need to dominate the draft phase.
             </p>
           </m.div>
 
