@@ -20,8 +20,8 @@ const PredictionCard = dynamic(() => import('@/components/PredictionCard'), {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Container } from '@/components/Section';
-import { api } from '@/lib/api';
-import { fadeUp, scaleIn } from '@/lib/motion';
+import { api } from '../lib/api';
+import { fadeUp, scaleIn } from '../lib/motion';
 import { DraftBoard, type DraftAction } from '@/components/draft/DraftBoard';
 import { RecommendationsPanel } from '@/components/draft/RecommendationsPanel';
 import { ConfidenceIndicator } from '@/components/ConfidenceIndicator';
