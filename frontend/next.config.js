@@ -127,6 +127,15 @@ const nextConfig = {
   },
   // Reduce bundle size and improve cold start
   webpack: (config, { isServer, dev }) => {
+    // Add explicit path resolution
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': require('path').resolve(__dirname),
+      '@/lib': require('path').resolve(__dirname, 'lib'),
+      '@/components': require('path').resolve(__dirname, 'components'),
+      '@/app': require('path').resolve(__dirname, 'app'),
+    };
+
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
