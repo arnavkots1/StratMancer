@@ -21,8 +21,8 @@ const MetaTrends = dynamic(() => import('@/components/MetaTrends'), {
   ssr: false
 });
 import { Container } from '@/components/Section';
-import { api } from '../../lib/api';
-import { fadeUp, scaleIn } from '../../lib/motion';
+import { api } from '@/lib/api';
+import { fadeUp, scaleIn } from '@/lib/motion';
 import { DataWarning } from '@/components/DataWarning';
 import type { Elo, MetaSnapshot, MetaTrends as MetaTrendsType } from '@/types';
 

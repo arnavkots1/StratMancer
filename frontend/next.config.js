@@ -129,13 +129,22 @@ const nextConfig = {
   webpack: (config, { isServer, dev }) => {
     // Add explicit path resolution - use process.cwd() for Vercel compatibility
     const projectRoot = process.cwd();
+    const path = require('path');
+    
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': projectRoot,
-      '@/lib': require('path').resolve(projectRoot, 'lib'),
-      '@/components': require('path').resolve(projectRoot, 'components'),
-      '@/app': require('path').resolve(projectRoot, 'app'),
+      '@/lib': path.resolve(projectRoot, 'lib'),
+      '@/components': path.resolve(projectRoot, 'components'),
+      '@/app': path.resolve(projectRoot, 'app'),
+      '@/types': path.resolve(projectRoot, 'types'),
     };
+    
+    // Ensure modules are resolved correctly
+    config.resolve.modules = [
+      path.resolve(projectRoot, 'node_modules'),
+      'node_modules'
+    ];
 
     if (!isServer) {
       config.resolve.fallback = {
