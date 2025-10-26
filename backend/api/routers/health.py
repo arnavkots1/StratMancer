@@ -12,6 +12,7 @@ from backend.services.inference import inference_service
 router = APIRouter(tags=["health"])
 
 
+@router.get("/health", response_model=HealthResponse)
 @router.get("/healthz", response_model=HealthResponse)
 async def health_check():
     """Health check endpoint"""
