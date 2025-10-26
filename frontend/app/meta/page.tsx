@@ -21,8 +21,153 @@ const MetaTrends = dynamic(() => import('@/components/MetaTrends'), {
   ssr: false
 });
 import { Container } from '@/components/Section';
-import { api } from '@/lib/api';
-import { fadeUp, scaleIn } from '@/lib/motion';
+// Inline API client to avoid import issues
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000';
+
+type RequestOptions = {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+  revalidate?: number | false;
+  method?: string;
+  body?: string;
+  headers?: Record<string, string>;
+};
+
+class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+  }
+}
+
+async function withTimeout(signal?: AbortSignal, timeoutMs = 30_000) {
+  if (signal) return signal;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const { signal: controllerSignal } = controller;
+  controllerSignal.addEventListener('abort', () => clearTimeout(timer));
+  return controllerSignal;
+}
+
+async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
+  const { timeoutMs, ...rest } = options;
+  const signal = await withTimeout(rest.signal, timeoutMs);
+  
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    ...rest,
+    signal,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-STRATMANCER-KEY': process.env.NEXT_PUBLIC_API_KEY || 'dev-key-change-in-production',
+      ...(rest.headers ?? {}),
+    },
+  });
+
+  if (!response.ok) {
+    const message = await response.text();
+    throw new ApiError(message || 'API request failed', response.status);
+  }
+
+  if (response.status === 204) {
+    return null as T;
+  }
+
+  return (await response.json()) as T;
+}
+
+const api = {
+  predictDraft(payload: Record<string, unknown>, options?: RequestOptions) {
+    return request('/predict-draft', { method: 'POST', body: JSON.stringify(payload), ...options });
+  },
+  refreshContext(elo?: string, options?: RequestOptions) {
+    return request('/predict-draft/refresh-context', { 
+      method: 'POST', 
+      body: JSON.stringify({ elo }), 
+      ...options 
+    });
+  },
+  getPickRecommendations(payload: Record<string, unknown>, options?: RequestOptions) {
+    return request('/recommend/pick', { method: 'POST', body: JSON.stringify(payload), ...options });
+  },
+  getBanRecommendations(payload: Record<string, unknown>, options?: RequestOptions) {
+    return request('/recommend/ban', { method: 'POST', body: JSON.stringify(payload), ...options });
+  },
+  analyzeDraft(payload: Record<string, unknown>, options?: RequestOptions) {
+    return request('/analysis/draft', { method: 'POST', body: JSON.stringify(payload), ...options });
+  },
+  getFeatureMap(options?: RequestOptions) {
+    return request('/models/feature-map', { method: 'GET', ...options });
+  },
+  getMetaOverview(elo: string, options?: RequestOptions) {
+    return request(`/meta/${elo}/latest`, { method: 'GET', ...options });
+  },
+  getMetaTrends(elo: string, options?: RequestOptions) {
+    return request(`/meta/trends/${elo}`, { method: 'GET', ...options });
+  },
+  getMetaForPatch(elo: string, patch: string, options?: RequestOptions) {
+    return request(`/meta/${elo}/${patch}`, { method: 'GET', ...options });
+  },
+  getModels(options?: RequestOptions) {
+    return request('/models/registry', { method: 'GET', ...options });
+  },
+  getLandingData(options?: RequestOptions) {
+    return request('/landing/', { method: 'GET', ...options });
+  },
+  health(options?: RequestOptions) {
+    return request('/health', { method: 'GET', ...options });
+  },
+};
+
+// Inline motion variants to avoid import issues
+const EASE_EXPO = [0.16, 1, 0.3, 1]
+const EASE_SINE = [0.12, 0.32, 0.24, 1]
+
+const REDUCED_VARIANTS = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.2, ease: 'linear' } },
+  exit: { opacity: 0, transition: { duration: 0.2, ease: 'linear' } },
+}
+
+function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function maybeReduce(variants: any): any {
+  return prefersReducedMotion() ? REDUCED_VARIANTS : variants
+}
+
+const fadeUp = {
+  initial: { opacity: 0, y: 32 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.7, ease: EASE_EXPO },
+  },
+  exit: {
+    opacity: 0,
+    y: -24,
+    transition: { duration: 0.35, ease: EASE_SINE },
+  },
+}
+
+const scaleIn = maybeReduce({
+  initial: { opacity: 0, scale: 0.88, filter: 'blur(6px)' },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    filter: 'blur(0px)',
+    transition: { duration: 0.6, ease: EASE_EXPO },
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.94,
+    filter: 'blur(4px)',
+    transition: { duration: 0.3, ease: EASE_SINE },
+  },
+})
 import { DataWarning } from '@/components/DataWarning';
 import type { Elo, MetaSnapshot, MetaTrends as MetaTrendsType } from '@/types';
 
