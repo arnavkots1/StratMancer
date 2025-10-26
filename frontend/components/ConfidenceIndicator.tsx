@@ -3,7 +3,7 @@
 import { AlertCircle, Info, TrendingUp, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/cn";
+import { cn } from '../lib/cn';
 
 interface ConfidenceIndicatorProps {
   confidence: number;

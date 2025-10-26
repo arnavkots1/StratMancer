@@ -15,13 +15,13 @@ import {
   Database,
   Globe
 } from "lucide-react"
-import { cn } from "@/lib/cn"
+import { cn } from '../lib/cn'
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Glow } from "@/components/Glow"
 import { Section, Container, Grid } from "@/components/Section"
-import { eliteMotionPresets } from "@/lib/motion"
+import { eliteMotionPresets } from '../lib/motion'
 
 const features = [
   {

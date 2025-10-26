@@ -4,11 +4,11 @@ import { useEffect, useMemo, useState } from "react"
 import { m, useReducedMotion } from "framer-motion"
 import Image from "next/image"
 import { Sparkles, WifiOff } from "lucide-react"
-import { getChampionImageUrl } from "@/lib/championImages"
+import { getChampionImageUrl } from '../../lib/championImages'
 import type { Champion } from "@/types"
 import type { DraftAction } from "./DraftBoard"
-import { fadeUp, scaleIn, slideIn } from "@/lib/motion"
-import { cn } from "@/lib/cn"
+import { fadeUp, scaleIn, slideIn } from '../../lib/motion'
+import { cn } from '../../lib/cn'
 
 type Recommendation = {
   champion_id: number

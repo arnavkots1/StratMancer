@@ -4,10 +4,10 @@ import { AnimatePresence, m } from "framer-motion"
 import { AlarmClock, Ban, PauseCircle, PlayCircle, RefreshCw } from "lucide-react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { getChampionImageUrl } from "@/lib/championImages"
-import { fadeUp, slideIn, stagger } from "@/lib/motion"
+import { getChampionImageUrl } from '../../lib/championImages'
+import { fadeUp, slideIn, stagger } from '../../lib/motion'
 import type { Champion, DraftState, TeamComposition } from "@/types"
-import { cn } from "@/lib/cn"
+import { cn } from '../../lib/cn'
 
 export type DraftAction = {
   team: "blue" | "red"

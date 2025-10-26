@@ -134,8 +134,8 @@ const nextConfig = {
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': projectRoot,
-      '@/lib': path.resolve(projectRoot, 'lib'),
-      '@/components': path.resolve(projectRoot, 'components'),
+      '@/lib': path.resolve(projectRoot, 'src/lib'),
+      '@/components': path.resolve(projectRoot, 'src/components'),
       '@/app': path.resolve(projectRoot, 'app'),
       '@/types': path.resolve(projectRoot, 'types'),
     };

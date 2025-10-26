@@ -2,9 +2,9 @@
 
 import * as React from "react"
 import { m } from "framer-motion"
-import { cn } from "@/lib/cn"
+import { cn } from '../lib/cn'
 import { Section, Container } from "@/components/Section"
-import { eliteMotionPresets } from "@/lib/motion"
+import { eliteMotionPresets } from '../lib/motion'
 
 const marqueeItems = [
   { text: "AI-Powered Draft Analysis", color: "text-primary-400" },

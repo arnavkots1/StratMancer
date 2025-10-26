@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { Menu, X, Zap, BarChart3, Users, Settings, Mail } from "lucide-react"
-import { cn } from "@/lib/cn"
+import { cn } from '../lib/cn'
 import { Button } from "@/components/ui/button"
 import { Glow } from "@/components/Glow"
 

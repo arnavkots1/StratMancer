@@ -7,8 +7,8 @@ import { m, useReducedMotion } from "framer-motion"
 import { ArrowUpRight, Sparkles, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Container } from "@/components/Section"
-import { fadeUp, particleDrift, scaleIn, stagger } from "@/lib/motion"
-// import { trackUserInteraction, trackFeatureUsage } from "@/lib/analytics"
+import { fadeUp, particleDrift, scaleIn, stagger } from '../lib/motion'
+// import { trackUserInteraction, trackFeatureUsage } from '../lib/analytics'
 import {
   getFavorPercentage,
   getLandingData,

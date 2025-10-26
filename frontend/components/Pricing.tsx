@@ -3,13 +3,13 @@
 import * as React from "react"
 import { m } from "framer-motion"
 import { Check, Zap, Crown, Star, ArrowRight } from "lucide-react"
-import { cn } from "@/lib/cn"
+import { cn } from '../lib/cn'
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { EliteGlow } from "@/components/Glow"
 import { Section, Container } from "@/components/Section"
-import { eliteMotionPresets } from "@/lib/motion"
+import { eliteMotionPresets } from '../lib/motion'
 
 const plans = [
   {

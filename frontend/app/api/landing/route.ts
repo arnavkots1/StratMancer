@@ -2,7 +2,7 @@ import { promises as fs } from "fs"
 import path from "path"
 import { NextResponse } from "next/server"
 
-import { getChampionImageUrl } from "@/lib/championImages"
+import { getChampionImageUrl } from '../../../lib/championImages'
 
 type MetaChampion = {
   champion_id: number
