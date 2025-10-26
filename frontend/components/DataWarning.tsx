@@ -3,8 +3,24 @@
 
 import { AlertTriangle, Info } from "lucide-react"
 import { m } from "framer-motion"
-import { fadeUp } from "@/lib/motion"
 import { Card } from "@/components/ui/card"
+
+// Inline motion variants to avoid import issues
+const EASE_EXPO = [0.16, 1, 0.3, 1]
+
+const fadeUp = {
+  initial: { opacity: 0, y: 32 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.7, ease: EASE_EXPO },
+  },
+  exit: {
+    opacity: 0,
+    y: -24,
+    transition: { duration: 0.35, ease: EASE_EXPO },
+  },
+}
 
 interface DataWarningProps {
   variant?: "warning" | "info"

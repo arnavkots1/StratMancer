@@ -7,8 +7,84 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Settings, Shield, BarChart3, Target, X, Check } from 'lucide-react'
 import { m, AnimatePresence } from 'framer-motion'
-import { trackCookieConsent } from '../lib/analytics'
-import { initializeAnalytics } from '../lib/analytics'
+
+// Inline analytics functions to avoid import issues
+const GA_TRACKING_ID = process.env.NEXT_PUBLIC_GA_ID || 'G-XXXXXXXXXX'
+
+const DEFAULT_PREFERENCES = {
+  essential: true,
+  analytics: false,
+  preferences: false,
+  marketing: false
+}
+
+function getCookiePreferences() {
+  if (typeof window === 'undefined') return DEFAULT_PREFERENCES
+  
+  try {
+    const stored = localStorage.getItem('cookie-consent')
+    if (stored) {
+      return JSON.parse(stored)
+    }
+  } catch (error) {
+    console.error('Error parsing cookie preferences:', error)
+  }
+  
+  return DEFAULT_PREFERENCES
+}
+
+function initializeAnalytics() {
+  if (typeof window === 'undefined') return
+  
+  const preferences = getCookiePreferences()
+  
+  // Only initialize if analytics cookies are accepted
+  if (!preferences.analytics) return
+  
+  // Load Google Analytics script
+  const script = document.createElement('script')
+  script.async = true
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`
+  document.head.appendChild(script)
+  
+  // Initialize gtag
+  window.dataLayer = window.dataLayer || []
+  function gtag(...args: any[]) {
+    window.dataLayer.push(args)
+  }
+  window.gtag = gtag
+  
+  gtag('js', new Date())
+  gtag('config', GA_TRACKING_ID, {
+    page_title: document.title,
+    page_location: window.location.href,
+    anonymize_ip: true,
+    allow_google_signals: false,
+    allow_ad_personalization_signals: false
+  })
+}
+
+function trackEvent(eventName: string, parameters?: Record<string, any>) {
+  if (typeof window === 'undefined' || !window.gtag) return
+  
+  const preferences = getCookiePreferences()
+  if (!preferences.analytics) return
+  
+  window.gtag('event', eventName, {
+    event_category: parameters?.category || 'engagement',
+    event_label: parameters?.label,
+    value: parameters?.value,
+    ...parameters
+  })
+}
+
+function trackCookieConsent(action: string, preferences?: Record<string, boolean>) {
+  trackEvent('cookie_consent', {
+    category: 'privacy',
+    action,
+    preferences: preferences ? JSON.stringify(preferences) : undefined
+  })
+}
 
 interface CookiePreferences {
   essential: boolean
