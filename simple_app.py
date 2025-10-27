@@ -1,5 +1,5 @@
 """
-Simplified FastAPI app for Railway deployment - WORKING VERSION
+Simplified FastAPI app for Railway deployment - FULL FUNCTIONALITY
 """
 import logging
 from fastapi import FastAPI
@@ -10,79 +10,17 @@ from backend.config import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create FastAPI app
-app = FastAPI(
-    title=settings.APP_NAME,
-    version=settings.APP_VERSION,
-    description="StratMancer API - League of Legends Draft Prediction"
-)
+# Import the FULL backend app
+from backend.api.main import app
 
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Simplified for testing
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
+# The app from backend.api.main already has:
+# - All ML routers (/predict-draft, /predict-meta, /recommend, /models)
+# - All middleware (CORS, security, metrics)
+# - All exception handlers
+# - All functionality from start_api.py
 
-# Simple health endpoint
-@app.get("/health")
-@app.get("/healthz")
-async def health_check():
-    """Simple health check"""
-    return {
-        "ok": True,
-        "status": "healthy",
-        "version": settings.APP_VERSION
-    }
-
-# Add ML routers - import them safely
-try:
-    from backend.api.routers import predict
-    app.include_router(predict.router)
-    logger.info("Predict router loaded")
-except Exception as e:
-    logger.error(f"Failed to load predict router: {e}")
-
-try:
-    from backend.api.routers import models
-    app.include_router(models.router)
-    logger.info("Models router loaded")
-except Exception as e:
-    logger.error(f"Failed to load models router: {e}")
-
-try:
-    from backend.api.routers import landing
-    app.include_router(landing.router)
-    logger.info("Landing router loaded")
-except Exception as e:
-    logger.error(f"Failed to load landing router: {e}")
-
-try:
-    from backend.api.routers import meta
-    app.include_router(meta.router)
-    logger.info("Meta router loaded")
-except Exception as e:
-    logger.error(f"Failed to load meta router: {e}")
-
-try:
-    from backend.api.routers import recommend
-    app.include_router(recommend.router)
-    logger.info("Recommend router loaded")
-except Exception as e:
-    logger.error(f"Failed to load recommend router: {e}")
-
-# Root endpoint
-@app.get("/")
-async def root():
-    """Root endpoint"""
-    return {
-        "message": "StratMancer API",
-        "version": settings.APP_VERSION,
-        "docs": "/docs",
-        "endpoints": ["/predict-draft", "/predict-meta", "/recommend", "/models"]
-    }
+logger.info(f"Loaded full StratMancer API v{settings.APP_VERSION}")
+logger.info("All ML models and endpoints are available")
 
 if __name__ == "__main__":
     import uvicorn
