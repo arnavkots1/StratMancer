@@ -37,13 +37,26 @@ except ImportError as e:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifecycle events for the application - minimal for Railway"""
-    # Startup - minimal logging only
+    """Lifecycle events for the application"""
+    # Startup
     logger.info(f"Starting {settings.APP_NAME} v{settings.APP_VERSION}")
+    
+    # Initialize rate limiter (required for security middleware)
+    try:
+        from backend.services.rate_limit import init_rate_limiter
+        rate_limiter = init_rate_limiter(
+            redis_host=settings.REDIS_HOST,
+            redis_port=settings.REDIS_PORT,
+            redis_db=settings.REDIS_DB,
+            use_redis=settings.USE_REDIS
+        )
+        logger.info(f"Rate limiter initialized (backend: {'redis' if rate_limiter.using_redis else 'memory'})")
+    except Exception as e:
+        logger.warning(f"Rate limiter initialization failed: {e}")
     
     yield
     
-    # Shutdown - minimal logging only
+    # Shutdown
     logger.info("Shutting down StratMancer API")
 
 
