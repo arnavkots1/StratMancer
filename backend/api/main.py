@@ -11,7 +11,13 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.exceptions import RequestValidationError
 
 from backend.config import settings
-from backend.api.routers import health, predict, models, team_optimizer, admin, recommend, analysis, meta, landing
+
+# Configure logging first
+logging.basicConfig(
+    level=getattr(logging, settings.LOG_LEVEL),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Optional imports for production features
 try:
@@ -27,13 +33,6 @@ try:
 except ImportError as e:
     logger.warning(f"Security middleware not available: {e}")
     SECURITY_AVAILABLE = False
-
-# Configure logging
-logging.basicConfig(
-    level=getattr(logging, settings.LOG_LEVEL),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -174,16 +173,70 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Include routers
-app.include_router(health.router)
-app.include_router(predict.router)
-app.include_router(models.router)
-app.include_router(team_optimizer.router)
-app.include_router(recommend.router)
-app.include_router(analysis.router)
-app.include_router(admin.router)
-app.include_router(meta.router)
-app.include_router(landing.router)
+# Include routers - import them safely
+try:
+    from backend.api.routers import health
+    app.include_router(health.router)
+    logger.info("Health router loaded")
+except Exception as e:
+    logger.error(f"Failed to load health router: {e}")
+
+try:
+    from backend.api.routers import predict
+    app.include_router(predict.router)
+    logger.info("Predict router loaded")
+except Exception as e:
+    logger.error(f"Failed to load predict router: {e}")
+
+try:
+    from backend.api.routers import models
+    app.include_router(models.router)
+    logger.info("Models router loaded")
+except Exception as e:
+    logger.error(f"Failed to load models router: {e}")
+
+try:
+    from backend.api.routers import landing
+    app.include_router(landing.router)
+    logger.info("Landing router loaded")
+except Exception as e:
+    logger.error(f"Failed to load landing router: {e}")
+
+try:
+    from backend.api.routers import meta
+    app.include_router(meta.router)
+    logger.info("Meta router loaded")
+except Exception as e:
+    logger.error(f"Failed to load meta router: {e}")
+
+try:
+    from backend.api.routers import recommend
+    app.include_router(recommend.router)
+    logger.info("Recommend router loaded")
+except Exception as e:
+    logger.error(f"Failed to load recommend router: {e}")
+
+try:
+    from backend.api.routers import analysis
+    app.include_router(analysis.router)
+    logger.info("Analysis router loaded")
+except Exception as e:
+    logger.error(f"Failed to load analysis router: {e}")
+
+try:
+    from backend.api.routers import team_optimizer
+    app.include_router(team_optimizer.router)
+    logger.info("Team optimizer router loaded")
+except Exception as e:
+    logger.error(f"Failed to load team optimizer router: {e}")
+
+try:
+    from backend.api.routers import admin
+    app.include_router(admin.router)
+    logger.info("Admin router loaded")
+except Exception as e:
+    logger.error(f"Failed to load admin router: {e}")
+
 
 # Metrics endpoint - optional
 if METRICS_AVAILABLE:
@@ -218,7 +271,7 @@ async def root():
         "message": "Welcome to StratMancer API",
         "version": settings.APP_VERSION,
         "docs": "/docs",
-        "health": "/healthz"
+        "health": "/health"
     }
 
 
