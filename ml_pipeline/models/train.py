@@ -60,32 +60,38 @@ ELO_GROUPS = {
 }
 
 
-class SimpleNN(nn.Module):
-    """Simple feed-forward neural network for draft prediction."""
-    
-    def __init__(self, input_dim: int, hidden_dims: List[int] = [512, 256, 128]):
-        super(SimpleNN, self).__init__()
+if HAS_TORCH:
+    class SimpleNN(nn.Module):
+        """Simple feed-forward neural network for draft prediction."""
         
-        layers = []
-        prev_dim = input_dim
+        def __init__(self, input_dim: int, hidden_dims: List[int] = [512, 256, 128]):
+            super(SimpleNN, self).__init__()
+            
+            layers = []
+            prev_dim = input_dim
+            
+            for hidden_dim in hidden_dims:
+                layers.extend([
+                    nn.Linear(prev_dim, hidden_dim),
+                    nn.BatchNorm1d(hidden_dim),
+                    nn.ReLU(),
+                    nn.Dropout(0.3)
+                ])
+                prev_dim = hidden_dim
+            
+            # Output layer
+            layers.append(nn.Linear(prev_dim, 1))
+            layers.append(nn.Sigmoid())
+            
+            self.network = nn.Sequential(*layers)
         
-        for hidden_dim in hidden_dims:
-            layers.extend([
-                nn.Linear(prev_dim, hidden_dim),
-                nn.BatchNorm1d(hidden_dim),
-                nn.ReLU(),
-                nn.Dropout(0.3)
-            ])
-            prev_dim = hidden_dim
-        
-        # Output layer
-        layers.append(nn.Linear(prev_dim, 1))
-        layers.append(nn.Sigmoid())
-        
-        self.network = nn.Sequential(*layers)
-    
-    def forward(self, x):
-        return self.network(x).squeeze()
+        def forward(self, x):
+            return self.network(x).squeeze()
+else:
+    # Dummy class when PyTorch is not available
+    class SimpleNN:
+        def __init__(self, *args, **kwargs):
+            raise ImportError("PyTorch not available. Install with: pip install torch")
 
 
 def load_data_for_elo_group(
