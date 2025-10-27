@@ -32,8 +32,9 @@ wheels/
 # Config with API keys
 config/config.yaml
 
-# Data files
-data/
+# Data files (excluding essential ML data)
+data/raw/
+data/processed/
 logs/
 
 # IDE
