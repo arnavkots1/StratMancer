@@ -37,6 +37,42 @@ async def health_check():
         "version": settings.APP_VERSION
     }
 
+# Add ML routers - import them safely
+try:
+    from backend.api.routers import predict
+    app.include_router(predict.router)
+    logger.info("Predict router loaded")
+except Exception as e:
+    logger.error(f"Failed to load predict router: {e}")
+
+try:
+    from backend.api.routers import models
+    app.include_router(models.router)
+    logger.info("Models router loaded")
+except Exception as e:
+    logger.error(f"Failed to load models router: {e}")
+
+try:
+    from backend.api.routers import landing
+    app.include_router(landing.router)
+    logger.info("Landing router loaded")
+except Exception as e:
+    logger.error(f"Failed to load landing router: {e}")
+
+try:
+    from backend.api.routers import meta
+    app.include_router(meta.router)
+    logger.info("Meta router loaded")
+except Exception as e:
+    logger.error(f"Failed to load meta router: {e}")
+
+try:
+    from backend.api.routers import recommend
+    app.include_router(recommend.router)
+    logger.info("Recommend router loaded")
+except Exception as e:
+    logger.error(f"Failed to load recommend router: {e}")
+
 # Root endpoint
 @app.get("/")
 async def root():
@@ -44,7 +80,8 @@ async def root():
     return {
         "message": "StratMancer API",
         "version": settings.APP_VERSION,
-        "docs": "/docs"
+        "docs": "/docs",
+        "endpoints": ["/predict-draft", "/predict-meta", "/recommend", "/models"]
     }
 
 if __name__ == "__main__":
