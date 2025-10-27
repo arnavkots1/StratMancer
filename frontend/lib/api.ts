@@ -7,7 +7,7 @@
 
 import type { RequestInit as NextRequestInit } from 'next/dist/server/web/spec-extension/request'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://web-production-3554d.up.railway.app';
 
 type RequestOptions = Omit<NextRequestInit, 'signal'> & {
   signal?: AbortSignal;
