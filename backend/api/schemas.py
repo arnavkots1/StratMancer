@@ -67,7 +67,7 @@ class PredictDraftResponse(BaseModel):
     """Response for draft prediction"""
     blue_win_prob: float = Field(..., description="Blue team win probability")
     red_win_prob: float = Field(..., description="Red team win probability")
-    confidence: float = Field(..., description="Prediction confidence (0-1)")
+    confidence: float = Field(..., description="Prediction confidence (0-100 percentage)")
     calibrated: bool = Field(..., description="Whether probabilities are calibrated")
     explanations: List[str] = Field(..., description="Human-readable feature explanations")
     model_version: str = Field(..., description="Model version used")

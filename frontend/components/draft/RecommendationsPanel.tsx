@@ -182,7 +182,7 @@ export function RecommendationsPanel({
                     {isBan ? "Threat differential" : "Projected swing"} based on{" "}
                     <span className="font-semibold text-white/80">
                       {recommendation.confidence
-                        ? `${Math.round(recommendation.confidence * 100)}%`
+                        ? `${Math.round(recommendation.confidence > 1 ? recommendation.confidence : recommendation.confidence * 100)}%`
                         : "model"}{" "}
                       confidence
                     </span>

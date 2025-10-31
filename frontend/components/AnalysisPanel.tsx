@@ -90,7 +90,12 @@ export default function AnalysisPanel({ analysis, onClose }: AnalysisPanelProps)
   };
 
   const favoredTeam = analysis.summary.favored_team;
-  const confidence = (analysis.summary.confidence * 100).toFixed(0);
+  // Backend returns confidence as 0-100 percentage
+  // Handle both 0-1 (decimal) and 0-100 (percentage) for backwards compatibility
+  const confidenceValue = analysis.summary.confidence > 1 
+    ? analysis.summary.confidence 
+    : analysis.summary.confidence * 100;
+  const confidence = Math.round(Math.max(0, Math.min(100, confidenceValue))).toFixed(0);
 
   return (
     <m.section

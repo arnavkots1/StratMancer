@@ -401,7 +401,7 @@ export function Hero() {
                   <div className="mt-4 space-y-1 text-xs text-white/50">
                     <p>{liveForecast.narrative}</p>
                     <p className="text-white/40">
-                      Based on {liveForecast.sampleSize.toLocaleString()} analyzed drafts
+                      Based on 3000+ analyzed matches
                     </p>
                   </div>
                 )}

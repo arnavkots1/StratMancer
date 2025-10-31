@@ -32,7 +32,19 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
   const redPercent = Math.round(calibrated.red * 1000) / 10
   const diff = bluePercent - redPercent
   const favored = diff > 0 ? 'Blue' : diff < 0 ? 'Red' : 'Even'
-  const confidencePercent = Number.isFinite(confidence) ? Math.round((confidence as number) * 100) : 0
+  // Backend returns confidence as percentage (0-100)
+  // Ensure it's in valid range and clamp to prevent display issues
+  let confidencePercent = 0
+  if (Number.isFinite(confidence)) {
+    const rawConfidence = confidence as number
+    // If confidence appears to be in 0-1 range (decimal), convert to percentage
+    if (rawConfidence >= 0 && rawConfidence <= 1) {
+      confidencePercent = Math.round(rawConfidence * 100)
+    } else {
+      // Already in 0-100 range, just clamp and round
+      confidencePercent = Math.round(Math.max(0, Math.min(100, rawConfidence)))
+    }
+  }
 
   const normalizedExplanations = useMemo(() => normalizeExplanations(explanations), [explanations])
 

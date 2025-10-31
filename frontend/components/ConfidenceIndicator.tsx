@@ -18,7 +18,9 @@ export function ConfidenceIndicator({
   totalSlots, 
   className 
 }: ConfidenceIndicatorProps) {
-  const confidencePercentage = Math.round(confidence * 100);
+  // Backend returns confidence as 0-100 percentage
+  // Handle both 0-1 (decimal) and 0-100 (percentage) for backwards compatibility
+  const confidencePercentage = confidence > 1 ? Math.round(confidence) : Math.round(confidence * 100);
   const isLowConfidence = confidencePercentage < 30;
   const isMediumConfidence = confidencePercentage >= 30 && confidencePercentage < 60;
   const _isHighConfidence = confidencePercentage >= 60;

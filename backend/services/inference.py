@@ -321,16 +321,20 @@ class InferenceService:
             shrink_factor,
         )
         
-        # Calculate confidence using standard formula: |p - 0.5| * 100
-        # This gives 0% for 50/50 and 100% for 100/0
-        confidence = float(abs(selected_prob - 0.5) * 100)
+        # Calculate confidence using standard formula: |p - 0.5| * 200
+        # This gives 0% for 50/50 and 100% for 100/0 or 0/100
+        # Using 200 multiplier to get full 0-100% range (original formula with * 100 gave 0-50%)
+        confidence = float(abs(selected_prob - 0.5) * 200)
         
         # For complete drafts, boost confidence slightly to reflect model certainty
         if filled_slots >= 10:  # Complete draft
             confidence = min(confidence * 1.2, 100.0)  # 20% boost, cap at 100%
         
+        # CRITICAL: Clamp confidence to 0-100 range to prevent any overflow or display bugs
+        confidence = max(0.0, min(100.0, float(confidence)))
+        
         # DEBUG: Log confidence calculation details
-        logger.info(f"CONFIDENCE DEBUG: selected_prob={selected_prob:.4f}, confidence={confidence:.4f}%")
+        logger.info(f"CONFIDENCE DEBUG: selected_prob={selected_prob:.4f}, confidence={confidence:.2f}%")
         logger.info(f"CONFIDENCE DEBUG: filled_slots={filled_slots}, complete_draft_boost={filled_slots >= 10}")
         
         # Generate simple explanations based on composition features
