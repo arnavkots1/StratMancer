@@ -89,6 +89,54 @@ def build_matchup_assets(
     return matrices
 
 
+def load_patch_note_priors(
+    patch: str,
+    id_to_index: Dict[str, int],
+) -> Dict[str, float]:
+    """
+    Load patch note priors from patchnote_featurizer if available.
+    
+    Returns dict mapping champion_id -> patch_prior_value (-1 to +1).
+    """
+    try:
+        from backend.services.patchnote_featurizer import patchnote_featurizer
+        import asyncio
+        
+        # Check if event loop exists, if not create one
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        # Run async function
+        if loop.is_running():
+            # If loop is already running, we can't use asyncio.run
+            # Create a task or use a thread
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, patchnote_featurizer.get_patch_features(patch, use_cache=True))
+                features = future.result(timeout=5)
+        else:
+            features = loop.run_until_complete(patchnote_featurizer.get_patch_features(patch, use_cache=True))
+        
+        priors = features.get('priors', {})
+        
+        # Convert champion_id (int) -> impact (float) to champion_id (str) -> impact
+        result = {}
+        for champ_id, prior_data in priors.items():
+            champ_id_str = str(champ_id)
+            if champ_id_str in id_to_index:
+                impact = prior_data.get('impact', 0.0) if isinstance(prior_data, dict) else 0.0
+                result[champ_id_str] = impact
+                
+        logger.info(f"Loaded {len(result)} patch note priors for patch {patch}")
+        return result
+    except Exception as e:
+        logger.debug(f"Could not load patch note priors: {e}")
+        return {}
+
+
 def build_priors(
     matches: Iterable[dict],
     id_to_index: Dict[str, int],
@@ -130,6 +178,9 @@ def build_priors(
     pick_rate = pick_counts / total_picks
 
     trend = compute_trend_three_patch(elo_group, patch, meta_dir, id_to_index)
+    
+    # Load patch note priors (from Gemini/patchnote featurizer)
+    patch_note_priors = load_patch_note_priors(patch, id_to_index)
 
     priors: Dict[str, Dict[str, float]] = {}
     for champ_id, idx in id_to_index.items():
@@ -137,6 +188,7 @@ def build_priors(
             "base_wr": float(base_wr[idx]),
             "pick_rate": float(pick_rate[idx]),
             "trend_3patch": float(trend.get(idx, 0.0)),
+            "patch_prior": float(patch_note_priors.get(champ_id, 0.0)),  # New: patch note impact
         }
     return priors
 

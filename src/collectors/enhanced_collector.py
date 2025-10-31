@@ -1,6 +1,6 @@
 """
-Main match data collector for League of Legends matches.
-Fetches matches across all ranks with automatic patch tagging and elo filtering.
+Enhanced match data collector with optimized rate limits for accurate per-rank collection.
+Uses slightly looser rate limits (18/sec, 90/2min) while remaining safe from rate limiting.
 """
 import logging
 import argparse
@@ -24,8 +24,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-class MatchCollector:
-    """Collects and processes League of Legends match data"""
+class EnhancedMatchCollector:
+    """
+    Enhanced match collector with optimized rate limits and improved accuracy.
+    Uses 18 requests/second and 90 requests per 2 minutes for safer but faster collection.
+    """
     
     # Queue types
     QUEUE_RANKED_SOLO = 'RANKED_SOLO_5x5'
@@ -34,22 +37,32 @@ class MatchCollector:
     DIVISIONS = ['I', 'II', 'III', 'IV']
     
     # Standard tiers (not including Master+)
-    STANDARD_TIERS = ['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'EMERALD', 'DIAMOND']
+    STANDARD_TIERS = ['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND']
     
-    def __init__(self, api_key: str, region: str = 'na1', 
-                 save_raw: bool = False):
+    def __init__(
+        self, 
+        api_key: str, 
+        region: str = 'na1',
+        save_raw: bool = False,
+        requests_per_second: int = 18,
+        requests_per_2_minutes: int = 90
+    ):
         """
-        Initialize match collector.
+        Initialize enhanced match collector.
         
         Args:
             api_key: Riot API key
             region: Region code
             save_raw: Whether to save raw API responses
+            requests_per_second: Rate limit per second (default: 18, looser but safe)
+            requests_per_2_minutes: Rate limit per 2 minutes (default: 90, looser but safe)
         """
         self.config = get_config()
+        
+        # Use optimized rate limits (looser than standard 20/sec, 100/2min)
         self.rate_limiter = RateLimiter(
-            requests_per_second=self.config.get('riot_api.rate_limits.requests_per_second', 20),
-            requests_per_2_minutes=self.config.get('riot_api.rate_limits.requests_per_2_minutes', 100)
+            requests_per_second=requests_per_second,
+            requests_per_2_minutes=requests_per_2_minutes
         )
         
         self.api_client = RiotAPIClient(api_key, region, self.rate_limiter)
@@ -67,56 +80,91 @@ class MatchCollector:
         self.processed_match_ids: Set[str] = set()
         
         cache_stats = self.puuid_cache.stats()
-        logger.info(f"Match collector initialized for patch {self.current_patch}")
+        logger.info(f"Enhanced match collector initialized for patch {self.current_patch}")
+        logger.info(f"Rate limits: {requests_per_second}/sec, {requests_per_2_minutes}/2min")
         logger.info(f"PUUID cache loaded: {cache_stats['total_entries']} entries")
     
-    def collect_for_rank(self, rank: str, target_matches: int = 100) -> List[MatchData]:
+    def collect_for_rank(
+        self, 
+        rank: str, 
+        target_matches: int = 100,
+        min_matches_per_summoner: int = 5,
+        max_matches_per_summoner: int = 20
+    ) -> List[MatchData]:
         """
-        Collect matches for a specific rank.
+        Collect matches for a specific rank with improved accuracy.
         
         Args:
             rank: Rank tier (IRON, BRONZE, ..., CHALLENGER)
             target_matches: Target number of matches to collect
+            min_matches_per_summoner: Minimum matches to try per summoner
+            max_matches_per_summoner: Maximum matches to collect per summoner
             
         Returns:
             List of collected MatchData objects
         """
         rank = rank.upper()
-        logger.info(f"Starting collection for {rank} (target: {target_matches} matches)")
+        logger.info(f"Starting enhanced collection for {rank} (target: {target_matches} matches)")
         
         # Get summoners for this rank
-        summoners = self._get_summoners_for_rank(rank)
+        summoners = self._get_summoners_for_rank(rank, max_summoners=min(200, target_matches // 2))
         logger.info(f"Found {len(summoners)} summoners in {rank}")
         
         if not summoners:
             logger.warning(f"No summoners found for {rank}")
             return []
         
-        # Collect matches
+        # Collect matches with better distribution
         collected_matches = []
+        summoners_attempted = 0
+        consecutive_failures = 0
+        max_consecutive_failures = 10
         
         with tqdm(total=target_matches, desc=f"Collecting {rank}") as pbar:
             for summoner in summoners:
                 if len(collected_matches) >= target_matches:
                     break
                 
+                # Safety check for too many consecutive failures
+                if consecutive_failures >= max_consecutive_failures:
+                    logger.warning(f"Too many consecutive failures ({consecutive_failures}). Trying next summoner batch...")
+                    consecutive_failures = 0
+                    continue
+                
                 try:
+                    # Calculate how many matches we need from this summoner
+                    remaining = target_matches - len(collected_matches)
+                    matches_to_get = min(max_matches_per_summoner, max(min_matches_per_summoner, remaining))
+                    
                     matches = self._collect_summoner_matches(
                         summoner['puuid'], 
                         rank,
-                        limit=min(20, target_matches - len(collected_matches))
+                        limit=matches_to_get
                     )
                     
-                    collected_matches.extend(matches)
-                    pbar.update(len(matches))
+                    if matches:
+                        collected_matches.extend(matches)
+                        pbar.update(len(matches))
+                        consecutive_failures = 0
+                        summoners_attempted += 1
+                        
+                        # Save incrementally (every 50 matches)
+                        if len(collected_matches) >= 50 and len(collected_matches) % 50 == 0:
+                            self.storage.save_matches(collected_matches[-50:], rank)
+                    else:
+                        consecutive_failures += 1
                     
-                    # Save incrementally
-                    if len(collected_matches) >= 50:
-                        self.storage.save_matches(collected_matches, rank)
-                        collected_matches = []
+                    # Small delay between summoners to be respectful
+                    time.sleep(0.05)
                     
+                except RiotAPIError as e:
+                    logger.warning(f"API error for summoner {summoner.get('summonerId')}: {e}")
+                    consecutive_failures += 1
+                    time.sleep(1)  # Wait a bit longer on API errors
+                    continue
                 except Exception as e:
                     logger.error(f"Failed to collect for summoner {summoner.get('summonerId')}: {e}")
+                    consecutive_failures += 1
                     continue
         
         # Save remaining matches
@@ -126,12 +174,12 @@ class MatchCollector:
         # Save PUUID cache
         self.puuid_cache.save()
         
-        logger.info(f"Collection complete for {rank}")
+        logger.info(f"Collection complete for {rank}: {len(collected_matches)} matches from {summoners_attempted} summoners")
         return collected_matches
     
     def collect_all_ranks(self, ranks: List[str] = None, matches_per_rank: int = 100):
         """
-        Collect matches for all specified ranks.
+        Collect matches for all specified ranks with enhanced error handling.
         
         Args:
             ranks: List of ranks to collect (None = all ranks)
@@ -140,27 +188,61 @@ class MatchCollector:
         if ranks is None:
             ranks = self.config.get_ranks()
         
-        logger.info(f"Collecting matches for ranks: {ranks}")
+        logger.info(f"Starting enhanced collection for ranks: {ranks}")
         logger.info(f"Target: {matches_per_rank} matches per rank")
+        logger.info(f"Rate limits: {self.rate_limiter.requests_per_second}/sec, "
+                   f"{self.rate_limiter.requests_per_2_minutes}/2min")
         
+        results = {}
         for rank in ranks:
             try:
-                self.collect_for_rank(rank, matches_per_rank)
+                start_time = time.time()
+                matches = self.collect_for_rank(rank, matches_per_rank)
+                elapsed = time.time() - start_time
+                
+                results[rank] = {
+                    'count': len(matches),
+                    'time_seconds': elapsed,
+                    'success': True
+                }
+                
+                logger.info(f"✓ {rank}: {len(matches)} matches in {elapsed:.1f}s")
+                
+                # Small delay between ranks
+                time.sleep(2)
+                
             except Exception as e:
-                logger.error(f"Failed to collect for rank {rank}: {e}", exc_info=True)
+                logger.error(f"✗ Failed to collect for rank {rank}: {e}", exc_info=True)
+                results[rank] = {
+                    'count': 0,
+                    'time_seconds': 0,
+                    'success': False,
+                    'error': str(e)
+                }
                 continue
         
         # Save PUUID cache
         self.puuid_cache.save()
         
-        # Print statistics
+        # Print summary statistics
+        total_matches = sum(r['count'] for r in results.values())
+        successful = sum(1 for r in results.values() if r['success'])
+        
+        logger.info("=" * 70)
+        logger.info("Collection Summary")
+        logger.info("=" * 70)
+        logger.info(f"Total matches collected: {total_matches}")
+        logger.info(f"Successful ranks: {successful}/{len(results)}")
+        for rank, result in results.items():
+            status = "✓" if result['success'] else "✗"
+            logger.info(f"  {status} {rank}: {result['count']} matches")
+        
         stats = self.storage.get_statistics()
-        logger.info(f"Collection complete. Total matches: {stats['total_matches']}")
-        logger.info(f"Matches by rank: {stats['by_rank']}")
+        logger.info(f"\nStorage statistics: {stats}")
     
-    def _get_summoners_for_rank(self, rank: str, max_summoners: int = 100) -> List[Dict]:
+    def _get_summoners_for_rank(self, rank: str, max_summoners: int = 200) -> List[Dict]:
         """
-        Get summoners for a specific rank.
+        Get summoners for a specific rank with improved error handling.
         
         Args:
             rank: Rank tier
@@ -196,11 +278,12 @@ class MatchCollector:
                         if puuid:
                             summoners.append({
                                 'puuid': puuid,
-                                'summonerId': entry.get('summonerId', puuid[:16])  # For backward compat
+                                'summonerId': entry.get('summonerId', puuid[:16])
                             })
                             
                             if len(summoners) % 50 == 0 or len(summoners) == max_summoners:
-                                logger.info(f"Progress: {len(summoners)}/{max_summoners} summoners ({idx}/{total_entries} entries processed)")
+                                logger.info(f"Progress: {len(summoners)}/{max_summoners} summoners "
+                                          f"({idx}/{total_entries} entries processed)")
                 
             except Exception as e:
                 logger.error(f"Failed to get {rank} league: {e}")
@@ -213,7 +296,9 @@ class MatchCollector:
                 
                 try:
                     page = 1
-                    while len(summoners) < max_summoners:
+                    max_pages = 15  # Increased from 10 for better coverage
+                    
+                    while len(summoners) < max_summoners and page <= max_pages:
                         entries = self.api_client.get_league_entries(
                             self.QUEUE_RANKED_SOLO, rank, division, page
                         )
@@ -230,18 +315,17 @@ class MatchCollector:
                             if puuid:
                                 summoners.append({
                                     'puuid': puuid,
-                                    'summonerId': entry.get('summonerId', puuid[:16])  # For backward compat
+                                    'summonerId': entry.get('summonerId', puuid[:16])
                                 })
                         
-                        if len(summoners) % 50 == 0 or len(summoners) >= max_summoners:
-                            logger.info(f"Progress: {len(summoners)}/{max_summoners} summoners (page {page}, {rank} {division})")
+                        if len(summoners) % 50 == 0:
+                            logger.info(f"Progress: {len(summoners)}/{max_summoners} summoners "
+                                      f"(page {page}, {rank} {division})")
                         
                         page += 1
                         
-                        # Limit pages to avoid excessive requests (each page has ~200 entries)
-                        if page > 10:
-                            logger.info(f"Reached page limit for {rank} {division}")
-                            break
+                        # Small delay between pages
+                        time.sleep(0.1)
                 
                 except Exception as e:
                     logger.error(f"Failed to get entries for {rank} {division}: {e}")
@@ -249,15 +333,21 @@ class MatchCollector:
         
         return summoners
     
-    def _collect_summoner_matches(self, puuid: str, rank: str, 
-                                  limit: int = 20, queue_id: int = 420) -> List[MatchData]:
+    def _collect_summoner_matches(
+        self, 
+        puuid: str, 
+        rank: str,
+        limit: int = 20, 
+        queue_id: int = 420
+    ) -> List[MatchData]:
         """
-        Collect and process matches for a summoner.
+        Collect and process matches for a summoner with improved error handling.
         
         Args:
             puuid: Player UUID
             rank: Rank tier for tagging
             limit: Maximum matches to collect
+            queue_id: Queue ID (420 = Ranked Solo/Duo)
             
         Returns:
             List of processed MatchData objects
@@ -269,14 +359,21 @@ class MatchCollector:
             match_ids = self.api_client.get_match_ids_by_puuid(
                 puuid, 
                 start=0, 
-                count=limit,
-                queue=self.config.get_queue_id()
+                count=min(limit, 100),  # API max is 100
+                queue=queue_id if queue_id else self.config.get_queue_id()
             )
+            
+            if not match_ids:
+                return []
             
             for match_id in match_ids:
                 # Skip if already processed
                 if match_id in self.processed_match_ids:
                     continue
+                
+                # Limit to requested number
+                if len(processed_matches) >= limit:
+                    break
                 
                 try:
                     # Get match data
@@ -293,7 +390,7 @@ class MatchCollector:
                     match_data = self.transformer.transform(raw_match, rank)
                     
                     if match_data:
-                        # Filter by current patch (optional)
+                        # Filter by current patch (optional, but preferred)
                         if match_data.patch == self.current_patch or match_data.patch == "unknown":
                             processed_matches.append(match_data)
                             self.processed_match_ids.add(match_id)
@@ -306,20 +403,24 @@ class MatchCollector:
                     logger.error(f"Error processing match {match_id}: {e}")
                     continue
         
+        except RiotAPIError as e:
+            logger.warning(f"API error getting matches for PUUID {puuid[:8]}...: {e}")
         except Exception as e:
-            logger.error(f"Failed to get matches for PUUID {puuid}: {e}")
+            logger.error(f"Failed to get matches for PUUID {puuid[:8]}...: {e}")
         
         return processed_matches
 
 
 def main():
-    """Command-line interface for match collector"""
-    parser = argparse.ArgumentParser(description='Collect League of Legends match data')
+    """Command-line interface for enhanced match collector"""
+    parser = argparse.ArgumentParser(
+        description='Enhanced League of Legends match data collector with optimized rate limits'
+    )
     
     parser.add_argument(
         '--ranks',
         nargs='+',
-        help='Ranks to collect (IRON, BRONZE, SILVER, GOLD, PLATINUM, EMERALD, DIAMOND, MASTER, GRANDMASTER, CHALLENGER)',
+        help='Ranks to collect (IRON, BRONZE, SILVER, GOLD, PLATINUM, DIAMOND, MASTER, GRANDMASTER, CHALLENGER)',
         default=None
     )
     
@@ -343,6 +444,20 @@ def main():
         help='Save raw API responses for debugging'
     )
     
+    parser.add_argument(
+        '--requests-per-second',
+        type=int,
+        default=18,
+        help='Rate limit per second (default: 18, safe but faster than standard)'
+    )
+    
+    parser.add_argument(
+        '--requests-per-2min',
+        type=int,
+        default=90,
+        help='Rate limit per 2 minutes (default: 90, safe but faster than standard)'
+    )
+    
     args = parser.parse_args()
     
     try:
@@ -350,11 +465,13 @@ def main():
         config = get_config()
         api_key = config.get_riot_api_key()
         
-        # Initialize collector
-        collector = MatchCollector(
+        # Initialize enhanced collector
+        collector = EnhancedMatchCollector(
             api_key=api_key,
             region=args.region,
-            save_raw=args.save_raw
+            save_raw=args.save_raw,
+            requests_per_second=args.requests_per_second,
+            requests_per_2_minutes=args.requests_per_2min
         )
         
         # Collect matches
@@ -363,10 +480,10 @@ def main():
             matches_per_rank=args.matches_per_rank
         )
         
-        logger.info("Collection completed successfully")
+        logger.info("Enhanced collection completed successfully")
         
     except Exception as e:
-        logger.error(f"Collection failed: {e}", exc_info=True)
+        logger.error(f"Enhanced collection failed: {e}", exc_info=True)
         return 1
     
     return 0

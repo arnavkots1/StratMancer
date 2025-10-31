@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # Authentication
     API_KEY: Optional[str] = os.getenv("STRATMANCER_API_KEY", "dev-key-change-in-production")
     
+    # Gemini AI (for patch note featurization)
+    GEMINI_API_KEY: Optional[str] = None
+    
     # CORS - Security: Only allow specific origins
     CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
