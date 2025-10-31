@@ -1,4 +1,4 @@
-export const runtime = 'node'; // ensure Node runtime
+export const runtime = 'nodejs'; // ensure Node runtime (Vercel requires 'nodejs', not 'node')
 
 // Exclude from middleware/rewrites - this route must be accessible directly
 
