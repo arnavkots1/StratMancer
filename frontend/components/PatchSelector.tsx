@@ -49,27 +49,29 @@ export default function PatchSelector({
 
       <div className="flex flex-col gap-2">
         <span className="text-xs uppercase tracking-[0.28em] text-white/40">Patch</span>
-        <div className="flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-black/30 p-2">
-          {patches.length === 0 ? (
-            <button className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.28em] text-white/40" disabled>
-              No data
-            </button>
-          ) : (
-            patches.map((patch) => (
-              <button
-                key={patch}
-                type="button"
-                onClick={() => onPatchChange(patch)}
-                disabled={disabled}
-                className={cn(
-                  'rounded-xl border border-white/10 px-4 py-2 text-xs uppercase tracking-[0.28em] text-white/60 transition',
-                  selectedPatch === patch && 'border-white/25 bg-white/10 text-white',
-                )}
-              >
-                {patch}
+        <div className="rounded-2xl border border-white/10 bg-black/30 p-2 overflow-hidden">
+          <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+            {patches.length === 0 ? (
+              <button className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.28em] text-white/40" disabled>
+                No data
               </button>
-            ))
-          )}
+            ) : (
+              patches.map((patch) => (
+                <button
+                  key={patch}
+                  type="button"
+                  onClick={() => onPatchChange(patch)}
+                  disabled={disabled}
+                  className={cn(
+                    'flex-shrink-0 rounded-xl border border-white/10 px-4 py-2 text-xs uppercase tracking-[0.28em] text-white/60 transition',
+                    selectedPatch === patch && 'border-white/25 bg-white/10 text-white',
+                  )}
+                >
+                  {patch}
+                </button>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 """
-Patch note featurizer service using Gemini AI.
-Parses Riot patch notes and converts them into structured champion features.
+Patch Analysis service using Gemini AI.
+Analyzes our collected match data to explain meta shifts and champion balance changes.
 """
 
 import json
@@ -17,46 +17,50 @@ try:
 except ImportError:
     HAS_GEMINI = False
 
-import requests
-from bs4 import BeautifulSoup
-
 from backend.services.cache import cache_service
+from backend.services.meta_tracker import meta_tracker
 from ml_pipeline.meta_utils import normalize_patch
 
 logger = logging.getLogger(__name__)
 
-# Gemini system prompt
-GEMINI_SYSTEM_PROMPT = """You are StratMancer's Patch Featurizer AI.
+# Gemini system prompt for analyzing meta data
+GEMINI_SYSTEM_PROMPT = """You are StratMancer's Patch Analysis AI.
 
-Input: League of Legends official patch note text.
+Input: Champion performance data comparing current patch vs previous patch.
 
-Output: STRICT JSON describing buffs, nerfs, and meta tags per champion.
+Your task: Analyze which champions got BETTER or WORSE and explain WHY in strategic terms.
 
-Rules:
-- Summarize each champion's adjustments numerically (approximate ±% if mentioned).
-- Tag gameplay aspects: damage, ability haste, CC, survivability, healing, scaling, mobility.
-- Output JSON schema:
+For each champion showing significant change:
+- Categorize as "Buff" (got better), "Nerf" (got worse), or "Adjust" (mixed/neutral)
+- Calculate impact score (-100 to +100): Based on win rate delta, pick rate change, ban rate change
+- Explain WHY: What changed? Why did win rate improve/decline? Strategic implications?
+- Tag affected gameplay aspects: burst, mobility, survivability, scaling, cc, damage, healing, etc.
+
+Output STRICT JSON:
 {
-  "patch": "14.21",
+  "patch": "15.20",
   "champions": [
     {
       "name": "Ahri",
       "category": "Buff|Nerf|Adjust",
-      "impact": +2.5,
+      "impact": 15.5,
       "affected_tags": ["burst", "mobility"],
-      "notes": "Slight buff to early Q damage and mana efficiency."
+      "notes": "Win rate increased 3.2% with 12% pick rate increase. Likely benefited from meta shifts favoring mobile mages. Stronger laning phase and mid-game skirmish presence."
     }
   ]
 }
 
-Never include prose outside JSON. Use numeric impact estimates even if inferred qualitatively."""
+Focus on champions with |delta_win_rate| > 0.02 or significant pick rate changes (>20% relative change).
+Explain strategic implications: Why is this good/bad? What playstyles benefit? What counters emerged?
+
+Never include prose outside JSON. Be specific about WHY champions changed."""
 
 # Champion name mapping (to handle variations)
 CHAMPION_NAMES = {}  # Will be loaded from feature map
 
 
-class PatchNoteFeaturizer:
-    """Service for extracting structured features from Riot patch notes."""
+class MetaAnalyzer:
+    """Service for analyzing patch changes using our collected match data and Gemini AI."""
 
     def __init__(self):
         # Get API key from settings (which loads from .env) or fallback to os.getenv
@@ -82,62 +86,153 @@ class PatchNoteFeaturizer:
             if not self.api_key:
                 logger.warning("GEMINI_API_KEY not set. Patch note featurization will use fallback heuristics.")
 
-    def fetch_patch_notes(self, patch: str) -> Optional[str]:
+    def _prepare_meta_comparison(self, elo: str, patch: str) -> Optional[Dict[str, Any]]:
         """
-        Fetch patch notes from Riot's website.
+        Load current and previous patch meta data for comparison.
         
         Args:
-            patch: Patch version (e.g., "14.21")
+            elo: ELO group (low, mid, high)
+            patch: Patch version (e.g., "15.20")
             
         Returns:
-            Raw patch note text or None if fetch fails
+            Dict with current and previous meta data, or None if unavailable
         """
         try:
-            # Try multiple URL patterns
-            urls = [
-                f"https://www.leagueoflegends.com/en-us/news/game-updates/patch-{patch}-notes/",
-                f"https://www.leagueoflegends.com/en-us/news/game-updates/patch-{patch}/",
-                f"https://www.leagueoflegends.com/en-us/news/game-updates/patch-{patch.replace('.', '-')}-notes/",
-            ]
+            patch_norm = normalize_patch(patch)
             
-            for url in urls:
+            # Get current patch meta - try patch-specific file first, then latest
+            current_meta = meta_tracker._load_meta_from_disk(elo, patch_norm)
+            if not current_meta:
+                # Fallback to latest meta if patch-specific doesn't exist
+                logger.info(f"Patch-specific meta not found, trying latest for {elo}")
                 try:
-                    response = requests.get(url, timeout=10)
-                    if response.status_code == 200:
-                        soup = BeautifulSoup(response.content, 'html.parser')
-                        # Extract main content
-                        content = soup.find('article') or soup.find('main') or soup.find('body')
-                        if content:
-                            text = content.get_text(separator='\n', strip=True)
-                            logger.info(f"Fetched patch notes for {patch} from {url}")
-                            return text
+                    # Load latest meta directly from disk
+                    latest_path = meta_tracker.meta_dir / f"latest_{elo}.json"
+                    if latest_path.exists():
+                        import json
+                        with open(latest_path, 'r', encoding='utf-8') as f:
+                            current_meta = json.load(f)
+                        if current_meta and current_meta.get("patch") != patch_norm:
+                            logger.warning(f"Latest meta is for patch {current_meta.get('patch')}, not {patch_norm}")
                 except Exception as e:
-                    logger.debug(f"Failed to fetch from {url}: {e}")
-                    continue
-                    
-            logger.warning(f"Could not fetch patch notes for {patch} from any URL")
-            return None
+                    logger.warning(f"Could not load latest meta: {e}")
+            
+            if not current_meta:
+                logger.warning(f"No meta data found for {elo} patch {patch_norm}")
+                return None
+            
+            # Get previous patch meta
+            from ml_pipeline.meta_utils import load_last_patch_meta
+            prev_patch, prev_meta = load_last_patch_meta(elo, exclude_patch=patch_norm)
+            
+            if not prev_meta:
+                logger.info(f"No previous patch meta found for comparison")
+                # Still return current meta for analysis
+                return {
+                    "current_patch": patch_norm,
+                    "previous_patch": None,
+                    "current_meta": current_meta,
+                    "previous_meta": None
+                }
+            
+            return {
+                "current_patch": patch_norm,
+                "previous_patch": prev_patch,
+                "current_meta": current_meta,
+                "previous_meta": prev_meta
+            }
         except Exception as e:
-            logger.error(f"Error fetching patch notes: {e}")
+            logger.error(f"Error preparing meta comparison: {e}", exc_info=True)
             return None
-
-    async def extract_features_with_gemini(self, patch_text: str, patch: str) -> Optional[Dict[str, Any]]:
+    
+    def _format_meta_for_gemini(self, comparison: Dict[str, Any]) -> str:
         """
-        Use Gemini to extract structured features from patch notes.
+        Format meta comparison data into a readable format for Gemini.
+        
+        Returns:
+            Formatted text describing champion changes
+        """
+        current = comparison["current_meta"]
+        previous = comparison.get("previous_meta")
+        
+        if not previous:
+            # Only current patch data available
+            text = f"Meta snapshot for patch {comparison['current_patch']}:\n\n"
+            text += f"Total matches: {current.get('total_matches', 0)}\n"
+            text += "Top performers:\n"
+            for champ in current.get("champions", [])[:20]:
+                text += f"- {champ['champion_name']}: WR {champ['win_rate']:.1%}, PR {champ['pick_rate']:.1%}, BR {champ['ban_rate']:.1%}\n"
+            return text
+        
+        # Compare with previous patch
+        prev_lookup = {c["champion_id"]: c for c in previous.get("champions", [])}
+        
+        text = f"Patch Analysis: Patch {comparison['current_patch']} vs {comparison['previous_patch']}\n\n"
+        text += f"Current patch: {current.get('total_matches', 0)} matches analyzed\n"
+        text += f"Previous patch: {previous.get('total_matches', 0)} matches analyzed\n\n"
+        text += "Champion Changes:\n"
+        
+        significant_changes = []
+        for champ in current.get("champions", []):
+            champ_id = champ["champion_id"]
+            prev_champ = prev_lookup.get(champ_id)
+            
+            if prev_champ:
+                delta_wr = champ.get("delta_win_rate", 0)
+                prev_wr = prev_champ.get("win_rate", 0)
+                prev_pr = prev_champ.get("pick_rate", 0)
+                curr_pr = champ.get("pick_rate", 0)
+                prev_br = prev_champ.get("ban_rate", 0)
+                curr_br = champ.get("ban_rate", 0)
+                
+                pr_change = curr_pr - prev_pr
+                br_change = curr_br - prev_br
+                
+                # Include champions with significant changes
+                if abs(delta_wr) > 0.02 or abs(pr_change) > 0.05 or abs(br_change) > 0.03:
+                    significant_changes.append({
+                        "name": champ["champion_name"],
+                        "current_wr": champ["win_rate"],
+                        "prev_wr": prev_wr,
+                        "delta_wr": delta_wr,
+                        "current_pr": curr_pr,
+                        "prev_pr": prev_pr,
+                        "pr_change": pr_change,
+                        "current_br": curr_br,
+                        "prev_br": prev_br,
+                        "br_change": br_change,
+                        "games": champ.get("games_played", 0)
+                    })
+        
+        # Sort by absolute win rate change
+        significant_changes.sort(key=lambda x: abs(x["delta_wr"]), reverse=True)
+        
+        for change in significant_changes[:30]:  # Top 30 changes
+            text += f"\n{change['name']}:\n"
+            text += f"  Win Rate: {change['prev_wr']:.1%} → {change['current_wr']:.1%} (Δ {change['delta_wr']:+.1%})\n"
+            text += f"  Pick Rate: {change['prev_pr']:.1%} → {change['current_pr']:.1%} (Δ {change['pr_change']:+.1%})\n"
+            text += f"  Ban Rate: {change['prev_br']:.1%} → {change['current_br']:.1%} (Δ {change['br_change']:+.1%})\n"
+            text += f"  Games: {change['games']}\n"
+        
+        return text
+
+    async def extract_features_with_gemini(self, meta_comparison_text: str, patch: str) -> Optional[Dict[str, Any]]:
+        """
+        Use Gemini to analyze meta changes and explain what's good/bad and why.
         
         Args:
-            patch_text: Raw patch note text
+            meta_comparison_text: Formatted meta comparison data
             patch: Patch version
             
         Returns:
             Structured JSON dict or None if extraction fails
         """
         if not self.model:
-            logger.warning("Gemini model not initialized, cannot extract features")
+            logger.warning("Gemini model not initialized, cannot analyze meta")
             return None
             
         try:
-            prompt = f"{GEMINI_SYSTEM_PROMPT}\n\nPatch Notes Text:\n{patch_text[:5000]}"  # Limit prompt size
+            prompt = f"{GEMINI_SYSTEM_PROMPT}\n\nMeta Comparison Data:\n{meta_comparison_text}"
             
             logger.info(f"Calling Gemini API for patch {patch}...")
             
@@ -147,7 +242,7 @@ class PatchNoteFeaturizer:
                 if hasattr(self.model, 'generate_content_async'):
                     response = await asyncio.wait_for(
                         self.model.generate_content_async(prompt),
-                        timeout=10.0
+                        timeout=30.0  # Increased timeout for complex patch analysis
                     )
                 else:
                     # Fallback to sync in executor
@@ -248,6 +343,113 @@ class PatchNoteFeaturizer:
             "patch": patch_norm,
             "champions": champions if champions else []
         }
+    
+    def _extract_features_heuristic_from_meta(self, comparison: Dict[str, Any]) -> Dict[str, Any]:
+        """Heuristic extraction from meta comparison when Gemini unavailable."""
+        current = comparison["current_meta"]
+        previous = comparison.get("previous_meta")
+        patch_norm = comparison["current_patch"]
+        
+        champions = []
+        
+        if not current or not current.get("champions"):
+            logger.warning(f"No champion data in current meta for patch {patch_norm}")
+            return {"patch": patch_norm, "champions": []}
+        
+        if previous and previous.get("champions"):
+            prev_lookup = {c["champion_id"]: c for c in previous.get("champions", [])}
+            
+            for champ in current.get("champions", []):
+                champ_id = champ.get("champion_id")
+                if not champ_id:
+                    continue
+                    
+                prev_champ = prev_lookup.get(champ_id)
+                
+                if prev_champ:
+                    # Use delta_win_rate if available, otherwise calculate
+                    delta_wr = champ.get("delta_win_rate")
+                    if delta_wr is None:
+                        prev_wr = prev_champ.get("win_rate", 0)
+                        curr_wr = champ.get("win_rate", 0)
+                        delta_wr = curr_wr - prev_wr
+                    
+                    # Lower threshold to catch more changes
+                    if abs(delta_wr) > 0.01:  # 1% change threshold (lowered from 2%)
+                        category = "Buff" if delta_wr > 0 else "Nerf"
+                        # Impact as percentage
+                        impact = delta_wr * 100
+                        
+                        # Also check pick rate changes
+                        prev_pr = prev_champ.get("pick_rate", 0)
+                        curr_pr = champ.get("pick_rate", 0)
+                        pr_change = curr_pr - prev_pr
+                        
+                        notes = f"Win rate: {prev_champ.get('win_rate', 0):.1%} → {champ.get('win_rate', 0):.1%} (Δ {delta_wr:+.1%})"
+                        if abs(pr_change) > 0.01:
+                            notes += f". Pick rate: {prev_pr:.1%} → {curr_pr:.1%} (Δ {pr_change:+.1%})"
+                        
+                        champions.append({
+                            "name": champ.get("champion_name", "Unknown"),
+                            "category": category,
+                            "impact": impact,
+                            "affected_tags": ["meta"],
+                            "notes": notes
+                        })
+            
+            # If we still have no champions, include top risers/fallers anyway
+            if not champions:
+                logger.info("No champions met threshold, including top 20 changes anyway")
+                sorted_champs = sorted(
+                    current.get("champions", []),
+                    key=lambda c: abs(c.get("delta_win_rate", 0)),
+                    reverse=True
+                )
+                for champ in sorted_champs[:20]:
+                    delta_wr = champ.get("delta_win_rate", 0)
+                    if abs(delta_wr) > 0:
+                        champions.append({
+                            "name": champ.get("champion_name", "Unknown"),
+                            "category": "Buff" if delta_wr > 0 else "Nerf",
+                            "impact": delta_wr * 100,
+                            "affected_tags": ["meta"],
+                            "notes": f"Win rate delta: {delta_wr:+.1%}"
+                        })
+        else:
+            # No previous patch, list top performers
+            logger.info("No previous patch data, listing top performers")
+            champs_list = current.get("champions", [])
+            logger.info(f"Found {len(champs_list)} champions in current meta")
+            
+            if not champs_list:
+                logger.warning(f"No champions found in current meta data")
+                return {"patch": patch_norm, "champions": []}
+            
+            # Sort by performance index or win rate
+            sorted_champs = sorted(
+                champs_list,
+                key=lambda c: c.get("performance_index", c.get("win_rate", 0)),
+                reverse=True
+            )
+            
+            for champ in sorted_champs[:30]:
+                champ_name = champ.get("champion_name") or champ.get("name", "Unknown")
+                wr = champ.get("win_rate", 0.5)
+                pr = champ.get("pick_rate", 0)
+                
+                champions.append({
+                    "name": champ_name,
+                    "category": "Adjust",
+                    "impact": (wr - 0.5) * 100,  # Deviation from 50%
+                    "affected_tags": ["meta"],
+                    "notes": f"Win rate: {wr:.1%}, Pick rate: {pr:.1%}, Performance Index: {champ.get('performance_index', 0):.2f}"
+                })
+        
+        logger.info(f"Heuristic extraction found {len(champions)} champions for patch {patch_norm}")
+        return {
+            "patch": patch_norm,
+            "champions": champions
+        }
 
     def get_champion_id_mapping(self) -> Dict[str, int]:
         """Load champion name to ID mapping from feature map."""
@@ -306,82 +508,92 @@ class PatchNoteFeaturizer:
         logger.info(f"Converted {len(priors)} champions to prior features")
         return priors
 
-    async def get_patch_features(self, patch: str, use_cache: bool = True) -> Dict[str, Any]:
+    async def get_patch_features(self, patch: str, elo: str = "mid", use_cache: bool = True) -> Dict[str, Any]:
         """
-        Get structured features for a patch.
+        Analyze meta changes for a patch using our collected match data.
         
         Args:
-            patch: Patch version (e.g., "14.21")
+            patch: Patch version (e.g., "15.20")
+            elo: ELO group (low, mid, high) - defaults to "mid"
             use_cache: Whether to use cached results
             
         Returns:
-            Dict with patch features including champion impacts
+            Dict with patch analysis including champion impacts and explanations
         """
         patch_norm = normalize_patch(patch)
-        cache_file = self.cache_dir / f"patch_{patch_norm}.json"
+        elo_key = elo.lower()
+        cache_file = self.cache_dir / f"meta_analysis_{elo_key}_{patch_norm}.json"
         
-        # Check cache first
+        # Check cache first (includes synergies, so no recalculation needed - saves tokens)
         if use_cache and cache_file.exists():
             try:
                 with open(cache_file, 'r', encoding='utf-8') as f:
                     cached = json.load(f)
-                logger.info(f"Loaded cached patch features for {patch_norm}")
-                return cached
+                # If cached data has synergies, return it (avoids recalculation and saves tokens)
+                if cached.get('synergies') is not None:
+                    logger.info(f"Loaded cached patch analysis with synergies for {elo_key} patch {patch_norm}")
+                    return cached
+                # If no synergies in cache, we'll add them below (but won't call Gemini again)
+                logger.info(f"Loaded cached patch analysis (will add synergies) for {elo_key} patch {patch_norm}")
             except Exception as e:
                 logger.warning(f"Failed to load cache: {e}")
         
-        # Check Redis cache
-        cache_key = f"patch_features:{patch_norm}"
+        # Check Redis cache (also includes synergies - saves tokens)
+        cache_key = f"meta_analysis:{elo_key}:{patch_norm}"
         if use_cache:
             cached = await cache_service.get(cache_key)
             if cached:
                 try:
-                    # Cache stores JSON string, parse it
                     cached_data = json.loads(cached)
-                    logger.info(f"Loaded patch features from Redis cache for {patch_norm}")
-                    return cached_data
+                    # If Redis cache has synergies, return it (avoids recalculation)
+                    if cached_data.get('synergies') is not None:
+                        logger.info(f"Loaded patch analysis with synergies from Redis cache for {elo_key} patch {patch_norm}")
+                        return cached_data
+                    # If no synergies, we'll add them but won't call Gemini again
+                    logger.info(f"Loaded patch analysis from Redis cache (will add synergies) for {elo_key} patch {patch_norm}")
                 except (json.JSONDecodeError, TypeError) as e:
                     logger.warning(f"Failed to parse cached data: {e}")
-                    # Continue to fetch fresh data
         
-        # Fetch patch notes
-        patch_text = self.fetch_patch_notes(patch)
-        if not patch_text:
-            logger.warning(f"Could not fetch patch notes for {patch_norm} from Riot website")
-            # Return empty structure but don't fail - user can still see it's being processed
+        # Prepare meta comparison
+        logger.info(f"Preparing patch analysis for {elo_key} patch {patch_norm}")
+        comparison = self._prepare_meta_comparison(elo_key, patch_norm)
+        
+        if not comparison:
+            logger.warning(f"No meta data available for {elo_key} patch {patch_norm}")
             return {
                 "patch": patch_norm,
                 "champions": [],
                 "source": "none",
                 "priors": {},
-                "message": "Patch notes could not be fetched. This patch may not exist or patch notes may not be available yet."
+                "message": f"No meta data found for patch {patch_norm}. Meta snapshots need to be built first using the meta tracker."
             }
         
-        # Extract features
+        # Format meta data for Gemini
+        meta_text = self._format_meta_for_gemini(comparison)
+        
+        # Analyze with Gemini
         try:
             if self.model:
-                logger.info(f"Attempting Gemini extraction for patch {patch_norm}")
-                features = await self.extract_features_with_gemini(patch_text, patch)
+                logger.info(f"Attempting Gemini analysis for {elo_key} patch {patch_norm}")
+                features = await self.extract_features_with_gemini(meta_text, patch_norm)
                 if features:
                     source = "gemini"
-                    logger.info(f"Successfully extracted features using Gemini")
+                    logger.info(f"Successfully analyzed meta using Gemini")
                 else:
-                    logger.warning(f"Gemini extraction returned None for {patch_norm}, falling back to heuristic")
-                    features = self.extract_features_heuristic(patch_text, patch)
+                    logger.warning(f"Gemini analysis returned None, falling back to heuristic")
+                    features = self._extract_features_heuristic_from_meta(comparison)
                     source = "heuristic"
             else:
                 logger.info(f"Gemini model not available, using heuristic extraction")
-                features = self.extract_features_heuristic(patch_text, patch)
+                features = self._extract_features_heuristic_from_meta(comparison)
                 source = "heuristic"
                 
             if not features:
-                logger.warning(f"Feature extraction returned None for {patch_norm}, using empty heuristic fallback")
-                features = self.extract_features_heuristic(patch_text, patch)
+                features = {"patch": patch_norm, "champions": []}
                 source = "heuristic"
         except Exception as e:
-            logger.error(f"Error extracting features from patch notes: {e}", exc_info=True)
-            # Fallback to heuristic
-            features = self.extract_features_heuristic(patch_text, patch)
+            logger.error(f"Error analyzing meta: {e}", exc_info=True)
+            features = self._extract_features_heuristic_from_meta(comparison)
             source = "heuristic"
             
         if not features:
@@ -390,6 +602,15 @@ class PatchNoteFeaturizer:
             
         features['source'] = source
         features['priors'] = self.convert_to_prior_features(features)
+        
+        # Add synergy analysis for top champions (only if not cached, uses local data - no tokens)
+        # Only analyze for champions that are in the features list to minimize work
+        if features.get('champions'):
+            # Limit to top 5 champions to reduce computation
+            top_champ_ids = [champ.get('champion_id') for champ in features['champions'][:5] if champ.get('champion_id')]
+            features['synergies'] = await self._analyze_champion_synergies(comparison, elo_key, limit_champions=top_champ_ids)
+        else:
+            features['synergies'] = {}
         
         # Cache results
         try:
@@ -408,6 +629,162 @@ class PatchNoteFeaturizer:
             
         return features
 
+    async def _analyze_champion_synergies(self, comparison: Dict[str, Any], elo: str, limit_champions: Optional[List[int]] = None) -> Dict[str, Any]:
+        """
+        Analyze synergies for top meta champions.
+        Uses local history index data - NO API tokens used.
+        
+        Args:
+            comparison: Meta comparison data
+            elo: ELO group
+            limit_champions: Optional list of champion IDs to analyze (if provided, only analyze these)
+            
+        Returns:
+            Dict mapping champion_id -> list of best synergy pairs with explanations
+        """
+        try:
+            from ml_pipeline.features.history_index import HistoryIndex
+            from ml_pipeline.features import load_feature_map
+            
+            # Load history index
+            history_index = HistoryIndex()
+            history_index.load("ml_pipeline/history_index.json")
+            
+            # Load feature map for champion name lookup
+            feature_map = load_feature_map()
+            champ_index = feature_map.get('champ_index', {})
+            id_to_name = {int(v): k for k, v in champ_index.items()}
+            
+            current = comparison.get("current_meta", {})
+            champions = current.get("champions", [])
+            
+            if not champions:
+                return {}
+            
+            # Determine which champions to analyze
+            # If limit_champions provided, use only those (to minimize work)
+            if limit_champions:
+                champions_to_analyze = [c for c in champions if c.get("champion_id") in limit_champions]
+                # Limit to max 5 champions
+                champions_to_analyze = champions_to_analyze[:5]
+            else:
+                # Default: analyze top 5 champions
+                previous = comparison.get("previous_meta")
+                
+                if previous and previous.get("champions"):
+                    # Use top 5 altered champions (if previous patch exists)
+                    prev_lookup = {c["champion_id"]: c for c in previous.get("champions", [])}
+                    
+                    altered_champions = []
+                    for champ in champions:
+                        champ_id = champ.get("champion_id")
+                        if champ_id and champ_id in prev_lookup:
+                            delta_wr = abs(champ.get("delta_win_rate", 0))
+                            altered_champions.append((champ_id, delta_wr, champ))
+                    
+                    # Sort by delta win rate and take top 5
+                    altered_champions.sort(key=lambda x: x[1], reverse=True)
+                    champions_to_analyze = [x[2] for x in altered_champions[:5]]
+                else:
+                    # Use top 5 meta champions by performance index
+                    sorted_champions = sorted(
+                        champions,
+                        key=lambda c: c.get("performance_index", 0),
+                        reverse=True
+                    )
+                    champions_to_analyze = sorted_champions[:5]
+            
+            # Map ELO group to representative rank for history index
+            # History index uses specific ranks, so we pick a representative from each group
+            from ml_pipeline.meta_utils import ELO_GROUPS
+            elo_group = elo.lower()
+            if elo_group in ELO_GROUPS:
+                # Use the first rank in the group as representative
+                rank = ELO_GROUPS[elo_group][0]  # e.g., "GOLD" for mid, "IRON" for low
+            else:
+                rank = "GOLD"  # Default fallback
+            
+            synergies_dict = {}
+            
+            for champ in champions_to_analyze:
+                champ_id = champ.get("champion_id")
+                champ_name = champ.get("champion_name", id_to_name.get(champ_id, "Unknown"))
+                
+                if not champ_id or rank not in history_index.elo_indices:
+                    continue
+                
+                index = history_index.elo_indices[rank]
+                pair_wr = index['pair_wr']
+                champ_wr = index['champ_wr']
+                avg_wr = index['avg_wr']
+                
+                # Find all pairs involving this champion
+                champ_synergies = []
+                
+                for (c1, c2), pair_wr_value in pair_wr.items():
+                    if c1 == champ_id or c2 == champ_id:
+                        partner_id = c2 if c1 == champ_id else c1
+                        partner_name = id_to_name.get(partner_id, f"Champ {partner_id}")
+                        
+                        # Calculate synergy score
+                        champ_wr_value = champ_wr.get(champ_id, avg_wr)
+                        partner_wr_value = champ_wr.get(partner_id, avg_wr)
+                        expected_wr = (champ_wr_value + partner_wr_value) / 2
+                        synergy_score = pair_wr_value - expected_wr
+                        
+                        champ_synergies.append({
+                            "champion_id": partner_id,
+                            "champion_name": partner_name,
+                            "win_rate": round(pair_wr_value, 4),
+                            "synergy_score": round(synergy_score, 4)
+                        })
+                
+                # Sort by synergy score (best synergies first)
+                champ_synergies.sort(key=lambda x: x["synergy_score"], reverse=True)
+                
+                # Take top 3 synergies only (to minimize data size)
+                top_synergies = champ_synergies[:3]
+                
+                if top_synergies:
+                    synergies_dict[str(champ_id)] = {
+                        "champion_name": champ_name,
+                        "synergies": top_synergies,
+                        "explanation": self._generate_synergy_explanation(champ_name, top_synergies)
+                    }
+            
+            return synergies_dict
+            
+        except Exception as e:
+            logger.error(f"Failed to analyze synergies: {e}", exc_info=True)
+            return {}
+    
+    def _generate_synergy_explanation(self, champ_name: str, synergies: List[Dict]) -> str:
+        """Generate explanation text for champion synergies."""
+        if not synergies:
+            return f"No strong synergy data available for {champ_name}."
+        
+        best_synergy = synergies[0]
+        partner = best_synergy["champion_name"]
+        synergy_score = best_synergy["synergy_score"]
+        wr = best_synergy["win_rate"]
+        
+        if synergy_score > 0.05:
+            strength = "exceptionally strong"
+        elif synergy_score > 0.02:
+            strength = "strong"
+        else:
+            strength = "good"
+        
+        explanation = f"{champ_name} pairs {strength} with {partner} "
+        explanation += f"(win rate: {wr:.1%}, synergy: +{synergy_score*100:.1f}%)."
+        
+        # Only mention one additional partner to keep explanation short
+        if len(synergies) > 1:
+            other_partner = synergies[1]["champion_name"]
+            explanation += f" Also pairs well with {other_partner}."
+        
+        return explanation
+    
     async def get_champion_prior(self, patch: str, champion_id: int) -> float:
         """
         Get normalized impact prior for a specific champion.
@@ -425,6 +802,7 @@ class PatchNoteFeaturizer:
         return champ_prior.get('impact', 0.0) if isinstance(champ_prior, dict) else 0.0
 
 
-# Global instance
-patchnote_featurizer = PatchNoteFeaturizer()
+# Global instance (keeping old name for backwards compatibility)
+meta_analyzer = MetaAnalyzer()
+patchnote_featurizer = meta_analyzer  # Alias for backwards compatibility
 

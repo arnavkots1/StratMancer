@@ -40,10 +40,10 @@ def main():
         # Collect sample matches
         print("\n3. Collecting 10 sample matches from GOLD rank...")
         print("   (This may take 1-2 minutes)")
-        matches = collector.collect_for_rank('GOLD', target_matches=10)
+        match_count = collector.collect_for_rank('GOLD', target_matches=10)
         
-        if matches:
-            print(f"\n   ✅ Collected {len(matches)} matches successfully!")
+        if match_count > 0:
+            print(f"\n   ✅ Collected {match_count} matches successfully!")
         else:
             print("\n   ⚠️ No matches collected. Checking storage...")
             stats = collector.storage.get_statistics()

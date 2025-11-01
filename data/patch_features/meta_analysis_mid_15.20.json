@@ -1,0 +1,79 @@
+{
+  "patch": "15.20",
+  "champions": [
+    {
+      "name": "Malphite",
+      "category": "Buff",
+      "impact": 65.5,
+      "affected_tags": [
+        "cc",
+        "burst",
+        "survivability",
+        "engagement"
+      ],
+      "notes": "WR 63.3% and PR 7.6% confirms massive power spike, driving a critical BR of 14.5%. This shift indicates Malphite received significant scaling buffs (likely to AP ratios or base damage) making him a one-shot threat, or his tank itemization became overwhelmingly potent. His near-uncontestable ultimate makes him the primary high-priority ban; failure to ban results in guaranteed team fight domination. Favors compositions needing instantaneous engage."
+    },
+    {
+      "name": "Twitch",
+      "category": "Buff",
+      "impact": 57.1,
+      "affected_tags": [
+        "scaling",
+        "damage",
+        "stealth",
+        "burst"
+      ],
+      "notes": "Achieving 64.8% WR alongside high PR (7.5%) and BR (9.8%) demonstrates systemic dominance. This spike suggests items crucial for his scaling (Crit/Lethality) are highly efficient, or map/vision changes favor his Q (Ambush) utility. Twitch's capacity to surprise-gank lanes and transition into a late-game AOE monster is defining the current pacing, forcing teams to invest heavily in deep vision control."
+    },
+    {
+      "name": "Kalista",
+      "category": "Buff",
+      "impact": 72.8,
+      "affected_tags": [
+        "damage",
+        "early game",
+        "dueling",
+        "kiting"
+      ],
+      "notes": "Extreme 71.4% WR indicates a niche but potentially overpowered interaction, likely a direct buff to her early game damage or Rend (E) scaling. While PR is low (0.6%), showing the player base is slowly adapting, she is a game-breaking champion in the hands of specialists. Strategic implication: she dominates the laning phase entirely and shuts down traditional scaling ADCs."
+    },
+    {
+      "name": "Rek'Sai",
+      "category": "Buff",
+      "impact": 35.0,
+      "affected_tags": [
+        "early game",
+        "pressure",
+        "mobility",
+        "damage"
+      ],
+      "notes": "High WR (60.0%) suggests the current meta prioritizes early jungle pressure and successful ganking. Rek'Sai's natural strength lies in rapid map traversal and guaranteed knock-ups. Potential buffs to her base damage or tunnel cooldowns allow her to secure early leads easily, transitioning into an unstoppable mid-game diver. Weakness in late-game scaling is currently negated by overwhelming early tempo."
+    },
+    {
+      "name": "Nami",
+      "category": "Adjust",
+      "impact": 20.6,
+      "affected_tags": [
+        "healing",
+        "utility",
+        "laning",
+        "peeling"
+      ],
+      "notes": "Highest PR (10.8%) indicates Nami is the preferred supportive choice, offering safe laning and effective enabling for dominant ADCs (Twitch, Samira). Her 54.3% WR is solid, signifying reliability rather than outright dominance. She acts as a stability anchor in a volatile meta, providing necessary sustain and pick potential via her ultimate (R)."
+    },
+    {
+      "name": "Kindred",
+      "category": "Buff",
+      "impact": 33.7,
+      "affected_tags": [
+        "scaling",
+        "damage",
+        "kiting",
+        "survivability"
+      ],
+      "notes": "59.5% WR confirms Kindred is excelling in Jungle due to faster mark stacking or high item synergy. As a marksman jungler, their ability to transition damage into the late game is highly valued. The ultimate (R) provides crucial clutch survivability in objective fights, proving highly impactful in a burst-heavy meta."
+    }
+  ],
+  "source": "gemini",
+  "priors": {}
+}

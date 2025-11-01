@@ -42,8 +42,8 @@ const faqCategories = [
         answer: 'The Meta Tracker shows current champion popularity, win rates, and tier lists for each ELO bracket. It helps you understand the current meta and make informed decisions about champion picks and bans.'
       },
       {
-        question: 'How does the AI reasoning work?',
-        answer: 'Our AI analyzes team compositions, champion synergies, counter-picks, and meta trends to provide detailed explanations for its recommendations. The reasoning appears as a typewriter animation in the recommendations panel.'
+        question: 'How does the reasoning work?',
+        answer: 'Our system analyzes team compositions, champion synergies, counter-picks, and meta trends to provide detailed explanations for its recommendations. The reasoning appears as a typewriter animation in the recommendations panel.'
       },
       {
         question: 'Can I save my draft analysis?',

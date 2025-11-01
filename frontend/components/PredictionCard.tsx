@@ -57,7 +57,7 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
       <div className="relative space-y-8">
         <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.28em] text-white/40">Win Probability Forecast</p>
+            <p className="text-xs uppercase tracking-[0.28em] text-white/40">Win Probability</p>
             <h2 className="mt-2 text-2xl font-semibold text-white">Projected Match Outcome</h2>
           </div>
           <ToggleGroup mode={mode} onModeChange={setMode} />
@@ -122,7 +122,6 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
 
             <div className="space-y-3">
               <div className="flex items-center gap-2 text-xs uppercase tracking-[0.28em] text-white/40">
-                <Sparkles className="h-4 w-4 text-primary" />
                 <span>Key Drivers</span>
               </div>
               <div className="space-y-3">
@@ -159,7 +158,6 @@ export default function PredictionCard({ prediction }: PredictionCardProps) {
             <div className="rounded-2xl border border-white/10 bg-black/25 p-4 text-xs text-white/45">
               <div className="flex items-center justify-between">
                 <span>Model build</span>
-                <span className="text-white/70">{model_version ?? 'v-latest'}</span>
               </div>
               <div className="mt-2 flex items-center gap-2 text-white/60">
                 <AlertCircle className="h-4 w-4 text-accent" />

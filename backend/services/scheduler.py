@@ -238,6 +238,7 @@ def refresh_model_registry():
 def refresh_patch_meta():
     """
     Job 3: Query Riot API for current patch and store in config/meta.json.
+    Detects patch changes and triggers meta refresh if needed.
     Runs daily.
     """
     start_time = time.time()
@@ -245,7 +246,7 @@ def refresh_patch_meta():
     
     try:
         from src.utils.riot_api_client import RiotAPIClient
-        from backend.config import settings
+        from ml_pipeline.meta_utils import normalize_patch, get_latest_patch_from_api
         
         # Initialize API client
         api_client = RiotAPIClient(
@@ -253,15 +254,30 @@ def refresh_patch_meta():
             region="na1"
         )
         
-        # Get current patch
+        # Get current patch from Riot API
         try:
             current_patch = api_client.get_current_patch()
-            logger.info(f"Current patch from Riot API: {current_patch}")
+            current_patch_norm = normalize_patch(current_patch)
+            logger.info(f"Current patch from Riot API: {current_patch_norm}")
         except Exception as e:
             logger.error(f"Failed to fetch patch from Riot API: {e}")
             # Use fallback
-            current_patch = "15.20"
-            logger.warning(f"Using fallback patch: {current_patch}")
+            current_patch_norm = "15.21"
+            logger.warning(f"Using fallback patch: {current_patch_norm}")
+        
+        # Get last known patch
+        last_patch = get_latest_patch_from_api()
+        patch_changed = False
+        
+        if last_patch:
+            last_patch_norm = normalize_patch(last_patch)
+            if last_patch_norm != current_patch_norm:
+                patch_changed = True
+                logger.info(f"🆕 Patch change detected: {last_patch_norm} → {current_patch_norm}")
+            else:
+                logger.info(f"✓ Patch unchanged: {current_patch_norm}")
+        else:
+            logger.info(f"ℹ️ No previous patch found, setting current: {current_patch_norm}")
         
         # Create config directory if needed
         config_dir = Path("config")
@@ -270,9 +286,11 @@ def refresh_patch_meta():
         # Save metadata
         meta_path = config_dir / "meta.json"
         meta_data = {
-            "patch": current_patch,
+            "patch": current_patch_norm,
             "last_updated": datetime.now().isoformat(),
-            "source": "riot_api" if current_patch != "15.20" else "fallback"
+            "source": "riot_api" if current_patch_norm != "15.21" else "fallback",
+            "previous_patch": last_patch if last_patch else None,
+            "patch_changed": patch_changed
         }
         
         with open(meta_path, 'w') as f:
@@ -280,8 +298,17 @@ def refresh_patch_meta():
         
         duration = time.time() - start_time
         logger.info(f"✅ Patch metadata refreshed successfully in {duration:.2f}s")
-        logger.info(f"   Patch: {current_patch}")
+        logger.info(f"   Patch: {current_patch_norm}")
+        logger.info(f"   Patch changed: {patch_changed}")
         logger.info(f"   Output: {meta_path}")
+        
+        # If patch changed, trigger meta snapshot refresh
+        if patch_changed:
+            logger.info("🔄 Patch changed, triggering meta snapshot refresh...")
+            try:
+                refresh_meta_snapshots()
+            except Exception as e:
+                logger.error(f"Failed to refresh meta snapshots after patch change: {e}", exc_info=True)
     
     except Exception as e:
         duration = time.time() - start_time
@@ -310,6 +337,83 @@ def refresh_meta_snapshots():
     except Exception as exc:
         duration = time.time() - start_time
         logger.error(f"❌ Meta snapshot refresh failed after {duration:.2f}s: {exc}", exc_info=True)
+
+
+def check_patch_and_meta_changes():
+    """
+    Job 5: Check for new patch and meta changes.
+    Triggers meta refresh and patch analysis if changes are detected.
+    Runs every 2 days to save costs (Gemini API calls).
+    """
+    start_time = time.time()
+    logger.info("🔄 Checking for patch and meta changes...")
+    
+    try:
+        from src.utils.riot_api_client import RiotAPIClient
+        from ml_pipeline.meta_utils import normalize_patch, get_latest_patch_from_api
+        from backend.services.meta_tracker import meta_tracker, MetaComputationError
+        
+        # Get current patch from API
+        api_client = RiotAPIClient(
+            api_key=os.getenv("RIOT_API_KEY"),
+            region="na1"
+        )
+        
+        try:
+            current_patch = api_client.get_current_patch()
+            current_patch_norm = normalize_patch(current_patch)
+        except Exception as e:
+            logger.error(f"Failed to fetch patch from Riot API: {e}")
+            current_patch_norm = None
+        
+        # Get last known patch from config
+        last_patch = get_latest_patch_from_api()
+        
+        patch_changed = False
+        if current_patch_norm and last_patch:
+            last_patch_norm = normalize_patch(last_patch)
+            if last_patch_norm != current_patch_norm:
+                patch_changed = True
+                logger.info(f"🆕 Patch change detected: {last_patch_norm} → {current_patch_norm}")
+        
+        # Update config if patch changed
+        if patch_changed and current_patch_norm:
+            config_dir = Path("config")
+            config_dir.mkdir(exist_ok=True)
+            meta_path = config_dir / "meta.json"
+            meta_data = {
+                "patch": current_patch_norm,
+                "last_updated": datetime.now().isoformat(),
+                "source": "riot_api",
+                "previous_patch": last_patch,
+                "patch_changed": True
+            }
+            with open(meta_path, 'w') as f:
+                json.dump(meta_data, f, indent=2)
+            logger.info(f"✓ Updated patch metadata: {current_patch_norm}")
+        
+        # Refresh meta snapshots if patch changed
+        if patch_changed:
+            logger.info("🔄 Refreshing meta snapshots due to patch change...")
+            try:
+                results = meta_tracker.refresh_all(current_patch_norm)
+                total = sum(1 for value in results.values() if value)
+                logger.info(f"✅ Meta snapshots refreshed: {total} ELO groups")
+            except MetaComputationError as exc:
+                logger.warning(f"⚠️ Meta snapshot refresh skipped: {exc}")
+            except Exception as exc:
+                logger.error(f"❌ Meta snapshot refresh failed: {exc}", exc_info=True)
+        else:
+            logger.info("✓ No patch change detected, skipping meta refresh")
+        
+        duration = time.time() - start_time
+        logger.info(f"✅ Patch/meta check completed in {duration:.2f}s")
+        logger.info(f"   Patch changed: {patch_changed}")
+        
+    except Exception as e:
+        duration = time.time() - start_time
+        logger.error(f"❌ Patch/meta check failed after {duration:.2f}s: {e}", exc_info=True)
+        # Don't re-raise
 
 
 # ============================================================================
@@ -365,6 +469,16 @@ def init_scheduler() -> SchedulerService:
         misfire_grace_time=3600
     )
     logger.info("  ✓ Scheduled: Refresh Meta Snapshots (daily at 2:00 AM)")
+
+    # Job 5: Check for patch/meta changes (every 2 days)
+    scheduler.add_job(
+        func=check_patch_and_meta_changes,
+        trigger=IntervalTrigger(days=2),
+        job_id='check_patch_meta_changes',
+        name='Check Patch & Meta Changes',
+        misfire_grace_time=3600  # 1 hour grace period
+    )
+    logger.info("  ✓ Scheduled: Check Patch & Meta Changes (every 2 days)")
     
     logger.info("=" * 70)
     

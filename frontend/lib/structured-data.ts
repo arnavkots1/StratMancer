@@ -166,7 +166,7 @@ export function generatePageStructuredData(page: string, _data?: any) {
         "@context": "https://schema.org",
         "@type": "WebPage",
         "name": "Meta Tracker - RiftAI",
-        "description": "Current League of Legends meta analysis and champion tier lists",
+        "description": "Current League of Legends patch analysis and champion tier lists",
         "url": `${baseUrl}/meta`,
         "mainEntity": {
           "@type": "Dataset",

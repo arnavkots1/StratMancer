@@ -48,15 +48,17 @@ export default function MetaOverview({
               Last updated {lastUpdated} · {meta?.total_matches ?? 0} matches analyzed
             </p>
           </div>
-          <div className="w-full max-w-xl">
-            <PatchSelector
-              selectedElo={selectedElo}
-              onEloChange={onEloChange}
-              selectedPatch={selectedPatch ?? meta?.patch}
-              onPatchChange={onPatchChange}
-              patches={availablePatches}
-              disabled={loading}
-            />
+          <div className="w-full lg:w-auto lg:min-w-[320px]">
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4 backdrop-blur-sm">
+              <PatchSelector
+                selectedElo={selectedElo}
+                onEloChange={onEloChange}
+                selectedPatch={selectedPatch ?? meta?.patch}
+                onPatchChange={onPatchChange}
+                patches={availablePatches}
+                disabled={loading}
+              />
+            </div>
           </div>
         </div>
 

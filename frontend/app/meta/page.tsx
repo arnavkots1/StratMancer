@@ -264,12 +264,6 @@ export default function MetaPage() {
               <div className="space-y-3">
                 <div className="flex items-center gap-4 flex-wrap">
                   <span className="text-xs uppercase tracking-[0.28em] text-white/40">Meta Dashboard</span>
-                  <Link 
-                    href="/meta/patchnotes" 
-                    className="text-xs uppercase tracking-[0.28em] text-primary/70 hover:text-primary transition-colors"
-                  >
-                    Patch Notes →
-                  </Link>
                 </div>
                 <h1 className="text-3xl font-semibold text-white">Rift Trends Insight</h1>
                 <p className="max-w-xl text-sm text-white/60">

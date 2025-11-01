@@ -8,6 +8,7 @@ import { Container } from '@/components/Section';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import EloSelector, { type EloGroup } from '@/components/EloSelector';
 
 // Inline motion variants (same as meta page)
 const EASE_EXPO = [0.16, 1, 0.3, 1];
@@ -62,11 +63,25 @@ interface PatchChampion {
   notes: string;
 }
 
+interface SynergyPair {
+  champion_id: number;
+  champion_name: string;
+  win_rate: number;
+  synergy_score: number;
+}
+
+interface ChampionSynergy {
+  champion_name: string;
+  synergies: SynergyPair[];
+  explanation: string;
+}
+
 interface PatchFeatures {
   patch: string;
   champions: PatchChampion[];
   source: 'gemini' | 'heuristic' | 'none';
   priors: Record<string, { impact: number; tags: string[]; category: string; notes: string }>;
+  synergies?: Record<string, ChampionSynergy>;
   message?: string;
 }
 
@@ -84,18 +99,65 @@ const TAG_COLORS: Record<string, string> = {
 };
 
 export default function PatchNotesPage() {
-  const [selectedPatch, setSelectedPatch] = useState<string>('14.21');
+  const [selectedPatch, setSelectedPatch] = useState<string>('');
+  const [selectedElo, setSelectedElo] = useState<EloGroup>('mid');
   const [features, setFeatures] = useState<PatchFeatures | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>('All');
+  const [fetchingLatest, setFetchingLatest] = useState(true);
 
+  // Fetch latest patch on mount
   useEffect(() => {
+    const controller = new AbortController();
+    
+    // Get latest patch from meta API (use mid as default)
+    fetch(`${API_BASE}/meta/mid/latest`, {
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+      .then(async (res) => {
+        if (!res.ok) return null;
+        const data = await res.json();
+        return data.patch as string;
+      })
+      .then((latestPatch) => {
+        if (controller.signal.aborted) return;
+        if (latestPatch) {
+          setSelectedPatch(latestPatch);
+        } else {
+          // Fallback to a recent patch if latest not available
+          setSelectedPatch('15.21');
+        }
+        setFetchingLatest(false);
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        // Fallback to current patch
+        setSelectedPatch('15.21');
+        setFetchingLatest(false);
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, []);
+
+  // Fetch patch notes when patch or ELO is selected
+  useEffect(() => {
+    if (!selectedPatch || fetchingLatest) return;
+
     const controller = new AbortController();
     setLoading(true);
     setError(null);
 
-    fetch(`${API_BASE}/meta/patchnotes/${selectedPatch}`, {
+    // Add refresh=true to bypass cache and force fresh fetch
+    // Increase timeout for Gemini analysis (may take 30s)
+    const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout
+    
+    fetch(`${API_BASE}/meta/patchnotes/${selectedPatch}?elo=${selectedElo}&refresh=true`, {
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
@@ -120,15 +182,17 @@ export default function PatchNotesPage() {
         setFeatures(null);
       })
       .finally(() => {
+        clearTimeout(timeoutId);
         if (!controller.signal.aborted) {
           setLoading(false);
         }
       });
 
     return () => {
+      clearTimeout(timeoutId);
       controller.abort();
     };
-  }, [selectedPatch]);
+  }, [selectedPatch, selectedElo, fetchingLatest]);
 
   // Filter out invalid champion names (common words that aren't champions)
   const invalidNames = new Set([
@@ -212,7 +276,7 @@ export default function PatchNotesPage() {
                     <ArrowLeft className="h-3 w-3" />
                     Meta Dashboard
                   </Link>
-                  <span className="text-xs uppercase tracking-[0.28em] text-white/40">Patch Notes</span>
+                  <span className="text-xs uppercase tracking-[0.28em] text-white/40">Patch Analysis</span>
                   {features?.source === 'gemini' && (
                     <Badge className="bg-gradient-to-r from-purple-500/20 to-cyan-500/20 text-purple-200 border-purple-500/30 text-[10px] px-2 py-0.5 animate-pulse">
                       <Sparkles className="h-3 w-3 mr-1" />
@@ -232,34 +296,53 @@ export default function PatchNotesPage() {
                   )}
                 </div>
                 <h1 className="text-3xl font-semibold text-white">
-                  Patch {selectedPatch} Highlights
+                  Patch {selectedPatch} Patch Analysis
                 </h1>
                 <p className="max-w-xl text-sm text-white/60">
                   {features?.source === 'gemini'
-                    ? 'AI-parsed champion changes with impact scores and meta tags. Automatically extracted from Riot\'s official patch notes using Gemini AI.'
-                    : 'Champion changes extracted from patch notes. For best results, set GEMINI_API_KEY to enable AI-powered parsing.'}
+                    ? 'AI-powered analysis of champion performance changes. Gemini explains which champions got better/worse and why based on our collected match data.'
+                    : 'Analysis of champion balance changes based on win rate, pick rate, and ban rate shifts.'}
                 </p>
               </div>
-              <div className="flex gap-3">
-                <input
-                  type="text"
-                  value={selectedPatch}
-                  onChange={(e) => setSelectedPatch(e.target.value)}
-                  placeholder="14.21"
-                  className="px-4 py-2 rounded-lg border border-white/10 bg-black/30 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-                <Button
-                  onClick={() => setSelectedPatch(selectedPatch)}
-                  className="bg-gradient-to-r from-primary/60 to-secondary/60"
-                >
-                  Load Patch
-                </Button>
+              <div className="flex gap-3 items-end flex-wrap">
+                <div className="flex flex-col gap-2 min-w-[160px]">
+                  <span className="text-xs uppercase tracking-[0.28em] text-white/40">ELO Group</span>
+                  <EloSelector
+                    value={selectedElo}
+                    onChange={(elo) => {
+                      setSelectedElo(elo);
+                      setFeatures(null); // Clear features when ELO changes
+                    }}
+                    className="w-full"
+                  />
+                </div>
+                <div className="flex flex-col gap-2 min-w-[140px]">
+                  <span className="text-xs uppercase tracking-[0.28em] text-white/40">Patch Version</span>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={selectedPatch}
+                      onChange={(e) => setSelectedPatch(e.target.value)}
+                      placeholder="15.21"
+                      className="flex-1 px-4 py-2 rounded-lg border border-white/10 bg-black/30 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary/40 text-sm"
+                    />
+                    <Button
+                      onClick={() => {
+                        // Trigger reload by updating state
+                        setFeatures(null);
+                      }}
+                      className="bg-gradient-to-r from-primary/60 to-secondary/60 whitespace-nowrap"
+                    >
+                      Load
+                    </Button>
+                  </div>
+                </div>
               </div>
             </div>
           </m.section>
 
           {/* Filters */}
-          <m.div variants={fadeUp} className="flex gap-2">
+          <m.div variants={fadeUp} className="flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-black/20 p-3 backdrop-blur-sm">
             {(['All', 'Buffed', 'Nerfed', 'Adjusted'] as FilterType[]).map((f) => (
               <Button
                 key={f}
@@ -277,13 +360,27 @@ export default function PatchNotesPage() {
           </m.div>
 
           {/* Error State */}
-          {error && (
+          {(error || (features?.message && features.champions.length === 0)) && (
             <m.div
               variants={fadeUp}
-              className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 flex items-center gap-3"
+              className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6 space-y-3"
             >
-              <AlertCircle className="h-5 w-5 text-rose-300" />
-              <span className="text-rose-200">{error}</span>
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-300 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <span className="text-amber-200 font-medium block">
+                    {error || features?.message || 'Unable to load patch notes'}
+                  </span>
+                  <p className="text-amber-200/70 text-sm">
+                    Patch notes may not be available yet for this patch. Try:
+                  </p>
+                  <ul className="text-amber-200/70 text-sm list-disc list-inside space-y-1 ml-2">
+                    <li>Checking if the patch has been released (Riot publishes notes after the patch goes live)</li>
+                    <li>Trying a recent patch like 15.19, 15.18, or 15.17</li>
+                    <li>Visiting Riot's website directly to verify the patch notes URL</li>
+                  </ul>
+                </div>
+              </div>
             </m.div>
           )}
 
@@ -292,6 +389,48 @@ export default function PatchNotesPage() {
             <div className="flex items-center justify-center py-20">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
+          )}
+
+          {/* Synergy Analysis Section */}
+          {features && !loading && features.synergies && Object.keys(features.synergies).length > 0 && (
+            <m.section
+              variants={fadeUp}
+              className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[#0d1424]/85 p-8 backdrop-blur-xl"
+            >
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.25),transparent_60%)] opacity-50" />
+              <div className="relative space-y-6">
+                <div>
+                  <h2 className="text-2xl font-semibold text-white mb-2">Top Synergy Combinations</h2>
+                  <p className="text-sm text-white/60">
+                    Best champion pairs and synergies for the top meta champions based on our match data
+                  </p>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {Object.values(features.synergies).map((synergy, idx) => (
+                    <m.div
+                      key={idx}
+                      variants={scaleIn}
+                      className="rounded-xl border border-white/10 bg-black/30 p-5 space-y-3"
+                    >
+                      <h3 className="text-lg font-semibold text-white">{synergy.champion_name}</h3>
+                      <p className="text-sm text-white/70">{synergy.explanation}</p>
+                      <div className="space-y-2">
+                        <p className="text-xs uppercase tracking-[0.28em] text-white/40">Top Synergies:</p>
+                        {synergy.synergies.map((pair, pairIdx) => (
+                          <div key={pairIdx} className="flex items-center justify-between text-sm">
+                            <span className="text-white/80">{pair.champion_name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-emerald-300">+{(pair.synergy_score * 100).toFixed(1)}%</span>
+                              <span className="text-white/50">({(pair.win_rate * 100).toFixed(1)}% WR)</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </m.div>
+                  ))}
+                </div>
+              </div>
+            </m.section>
           )}
 
           {/* Champion Grid */}
@@ -356,7 +495,7 @@ export default function PatchNotesPage() {
 
                         {/* Notes */}
                         {champion.notes && (
-                          <p className="text-sm text-white/70 line-clamp-2">{champion.notes}</p>
+                          <p className="text-sm text-white/70">{champion.notes}</p>
                         )}
                       </div>
                     </Card>
@@ -376,7 +515,7 @@ export default function PatchNotesPage() {
               </p>
               {features.source === 'heuristic' && features.champions.length > 0 && (
                 <p className="text-xs text-amber-300/60">
-                  Tip: Enable Gemini AI for accurate champion name extraction. Many heuristic entries are being filtered out.
+                  Tip: Many heuristic entries are being filtered out.
                 </p>
               )}
             </m.div>

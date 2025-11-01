@@ -296,9 +296,16 @@ export default function DraftPage() {
   }, []);
 
 
-  // Pick timer countdown
+  // Pick timer countdown - stops when draft is complete
   useEffect(() => {
-    if (!timerActive) return;
+    // Stop timer if draft is complete
+    const isComplete = draftStep >= totalSteps;
+    if (isComplete && timerActive) {
+      setTimerActive(false);
+      return;
+    }
+    
+    if (!timerActive || isComplete) return;
     
     if (pickTimer <= 0) {
       setTimerActive(false);
@@ -311,7 +318,7 @@ export default function DraftPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [timerActive, pickTimer]);
+  }, [timerActive, pickTimer, draftStep, totalSteps]);
 
   const loadChampions = async () => {
     try {
@@ -655,10 +662,10 @@ export default function DraftPage() {
                     Live Draft Intelligence
                   </Badge>
                   <h1 className="text-3xl font-semibold text-white md:text-5xl">
-                    Holographic Draft Command Window
+                    Draft Command Window
                   </h1>
                   <p className="max-w-xl text-sm text-white/65 md:text-base">
-                    Coordinate bans and picks with RiftAI&apos;s predictive engine. Watch AI reasoning unfold
+                    Coordinate bans and picks with RiftAI&apos;s predictive engine. Watch reasoning unfold
                     as we forecast every matchup pivot in real-time.
                   </p>
                 </div>
@@ -687,7 +694,7 @@ export default function DraftPage() {
                 />
               </div>
               <div className="text-xs text-white/60">
-                {prediction ? 'AI Analysis Active' : 'Awaiting Draft Data'}
+                {prediction ? 'Analysis Active' : 'Awaiting Draft Data'}
               </div>
             </m.div>
 

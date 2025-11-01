@@ -84,11 +84,11 @@ Average speed: 3.74 matches/minute
 
 ### Overview
 
-`retrain_models.py` retrains your existing models to ensure they predict a **55-60% blue win rate**, which is more realistic for League of Legends gameplay (blue side typically has a slight advantage).
+`retrain_models.py` retrains your existing models to ensure they predict a **60% blue win rate**, which reflects blue side advantage in League of Legends gameplay.
 
 ### Features
 
-- **Target blue win rate**: 55-60% (default: 57.5%)
+- **Target blue win rate**: 60% (default, blue side favored)
 - **Sample weighting**: Biases model training towards blue wins for XGBoost
 - **Class weights**: Uses class weighting for Logistic Regression
 - **Calibrator adjustment**: Fine-tunes calibration to achieve target win rate
@@ -97,14 +97,14 @@ Average speed: 3.74 matches/minute
 ### Usage
 
 ```bash
-# Retrain all ELO groups with default 57.5% target
+# Retrain all ELO groups with default 60% target
 python retrain_models.py --elo all
 
 # Retrain specific ELO group with custom target (58%)
 python retrain_models.py --elo mid --target-wr 0.58
 
-# Retrain with XGBoost (recommended)
-python retrain_models.py --model xgb --elo all --target-wr 0.575
+# Retrain with XGBoost (recommended, default is 60%)
+python retrain_models.py --model xgb --elo all
 
 # Retrain with Logistic Regression
 python retrain_models.py --model logreg --elo high --target-wr 0.56
@@ -117,8 +117,8 @@ python retrain_models.py --model logreg --elo high --target-wr 0.56
   - `low`: IRON, BRONZE, SILVER
   - `mid`: GOLD, PLATINUM, EMERALD (EMERALD is included in mid ELO group)
   - `high`: DIAMOND, MASTER, GRANDMASTER, CHALLENGER
-- `--target-wr`: Target blue win rate (default: 0.575 = 57.5%)
-  - Recommended range: 0.55 - 0.60 (55% - 60%)
+- `--target-wr`: Target blue win rate (default: 0.60 = 60%)
+  - Recommended range: 0.50 - 0.65 (50% - 65%)
 - `--data-dir`: Directory containing match data (default: `data/processed`)
 - `--output-dir`: Directory to save trained models (default: `ml_pipeline/models/trained`)
 - `--features`: Feature mode (`basic`, `rich`) - default: `basic`
@@ -153,8 +153,8 @@ Example output:
 ============================================================
 TEST SET METRICS
 Blue win rate (raw): 0.523
-Blue win rate (calibrated): 0.577
-Target blue win rate: 0.575
+Blue win rate (calibrated): 0.600
+Target blue win rate: 0.60
 LogLoss: 0.6234 -> 0.5892
 Brier: 0.2134 -> 0.1987
 ============================================================
@@ -164,7 +164,7 @@ Brier: 0.2134 -> 0.1987
 
 - `blue_win_rate_raw`: Raw model predictions blue win rate
 - `blue_win_rate_calibrated`: Calibrated predictions blue win rate
-- `target_blue_win_rate`: Target blue win rate (55-60%)
+- `target_blue_win_rate`: Target blue win rate (default: 60%)
 - `roc_auc_raw/calibrated`: ROC AUC scores
 - `log_loss_raw/calibrated`: Log loss scores
 - `brier_raw/calibrated`: Brier scores
@@ -183,23 +183,35 @@ python collect_data_per_rank.py --ranks IRON BRONZE SILVER GOLD PLATINUM EMERALD
 
 **Expected time**: ~7 hours for 7 ranks × 200 matches (with optimized rate limits)
 
-### Step 2: Retrain Models
+### Step 2: Rebuild Feature Map (if needed)
+
+If you see feature count mismatches, rebuild the feature map first:
 
 ```bash
-# Retrain all ELO groups with 57.5% blue win rate target
-python retrain_models.py --elo all --target-wr 0.575
+# Rebuild feature map to ensure all features are included
+python rebuild_feature_map.py
+```
+
+### Step 3: Retrain Models
+
+```bash
+# Retrain all ELO groups with 60% blue win rate target (default)
+python retrain_models.py --elo all
+
+# Or specify explicitly:
+python retrain_models.py --elo all --target-wr 0.60
 ```
 
 **Expected time**: ~30-60 minutes depending on data size and model type
 
-### Step 3: Verify Results
+### Step 4: Verify Results
 
 Check the model cards in `ml_pipeline/models/modelcards/`:
 ```bash
 cat ml_pipeline/models/modelcards/modelcard_mid_*.json | grep -A 5 "blue_win_rate"
 ```
 
-You should see `blue_win_rate_calibrated` between 0.55 and 0.60.
+You should see `blue_win_rate_calibrated` around 0.60 (60%).
 
 ---
 

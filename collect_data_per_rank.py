@@ -72,8 +72,8 @@ def collect_for_rank_optimized(
     collector.api_client.rate_limiter = rate_limiter
     
     try:
-        # Collect matches
-        collected_matches = collector.collect_for_rank(rank, target_matches)
+        # Collect matches (returns total count, not list)
+        total_collected = collector.collect_for_rank(rank, target_matches)
         
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()
@@ -81,11 +81,11 @@ def collect_for_rank_optimized(
         stats = {
             'rank': rank,
             'target_matches': target_matches,
-            'collected_matches': len(collected_matches),
-            'success_rate': len(collected_matches) / target_matches if target_matches > 0 else 0,
+            'collected_matches': total_collected,
+            'success_rate': total_collected / target_matches if target_matches > 0 else 0,
             'duration_seconds': duration,
             'duration_minutes': duration / 60,
-            'matches_per_minute': len(collected_matches) / (duration / 60) if duration > 0 else 0,
+            'matches_per_minute': total_collected / (duration / 60) if duration > 0 else 0,
             'requests_per_second': requests_per_second,
             'requests_per_2_minutes': requests_per_2_minutes,
             'start_time': start_time.isoformat(),

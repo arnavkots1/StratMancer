@@ -49,11 +49,11 @@ def adjust_calibrator_for_target_wr(
     calibrator_method: str,
     y_true: np.ndarray,
     y_pred: np.ndarray,
-    target_blue_wr: float = 0.575,
+    target_blue_wr: float = 0.60,
     max_iterations: int = 10
 ) -> Tuple[Any, str, np.ndarray]:
     """
-    Adjust calibrator to achieve target blue win rate (55-60%).
+    Adjust calibrator to achieve target blue win rate (default: 60%).
     
     Uses an iterative approach to shift probabilities towards the target.
     """
@@ -109,7 +109,7 @@ def train_model_with_blue_bias(
     assets_dir: str = "data/assets",
     feature_mode: str = "basic",
     feature_flags: Optional[FeatureFlags] = None,
-    target_blue_wr: float = 0.575,  # 57.5% (middle of 55-60% range)
+    target_blue_wr: float = 0.60,  # 60% (blue side favored)
     cv_folds: int = 5,
     params: Optional[Dict] = None,
 ) -> Dict[str, Any]:
@@ -119,7 +119,7 @@ def train_model_with_blue_bias(
     Args:
         elo_group: ELO group ('low', 'mid', 'high')
         model_type: Model type ('xgb', 'logreg', 'nn')
-        target_blue_wr: Target blue win rate (default: 0.575 = 57.5%)
+        target_blue_wr: Target blue win rate (default: 0.60 = 60%)
         ... other params same as train_model
     
     Returns:
@@ -414,7 +414,7 @@ def retrain_all_elos(
     output_dir: str = "ml_pipeline/models/trained",
     assets_dir: str = "data/assets",
     feature_mode: str = "basic",
-    target_blue_wr: float = 0.575,
+    target_blue_wr: float = 0.60,
     cv_folds: int = 5,
 ) -> Dict[str, Dict]:
     """Retrain all ELO groups with blue win rate bias."""
@@ -439,18 +439,18 @@ def retrain_all_elos(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Retrain models with 55-60% blue win rate target",
+        description="Retrain models with 60% blue win rate target (blue side favored)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Retrain all ELO groups with default 57.5% target
+  # Retrain all ELO groups with default 60% target
   python retrain_models.py --elo all
 
   # Retrain mid ELO with custom target (58%)
   python retrain_models.py --elo mid --target-wr 0.58
 
-  # Retrain with XGBoost
-  python retrain_models.py --model xgb --elo all --target-wr 0.575
+  # Retrain with XGBoost (default is 60%)
+  python retrain_models.py --model xgb --elo all
         """
     )
     
@@ -502,8 +502,8 @@ Examples:
     parser.add_argument(
         "--target-wr",
         type=float,
-        default=0.575,
-        help="Target blue win rate (default: 0.575 = 57.5%, middle of 55-60% range)"
+        default=0.60,
+        help="Target blue win rate (default: 0.60 = 60%, blue side favored)"
     )
     
     parser.add_argument(
@@ -515,10 +515,10 @@ Examples:
     
     args = parser.parse_args()
     
-    # Validate target win rate
-    if not (0.55 <= args.target_wr <= 0.60):
+    # Validate target win rate (allow up to 65% for stronger blue bias)
+    if not (0.50 <= args.target_wr <= 0.65):
         logger.warning(
-            f"Target win rate {args.target_wr:.3f} is outside recommended 55-60% range. "
+            f"Target win rate {args.target_wr:.3f} is outside recommended 50-65% range. "
             "Continuing anyway..."
         )
     
@@ -539,7 +539,7 @@ Examples:
             card = result.get("modelcard", {})
             metrics = card.get("metrics", {})
             blue_wr = metrics.get("blue_win_rate_calibrated", 0.0)
-            target_wr = metrics.get("target_blue_win_rate", 0.575)
+            target_wr = metrics.get("target_blue_win_rate", 0.60)
             print(
                 f"  ✓ {group.upper()}: {card.get('model_file', 'unknown')} "
                 f"(Blue WR: {blue_wr:.1%}, Target: {target_wr:.1%})"
