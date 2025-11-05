@@ -305,7 +305,9 @@ export function RecommendationsPanel({
                 : "Calibrated win impact"
               : "Draft resolved"}
           </span>
-          <span>{filteredRecommendations.length} options</span>
+          <div className="flex items-center gap-3">
+            <span>{filteredRecommendations.length} options</span>
+          </div>
         </div>
       </div>
     </m.section>

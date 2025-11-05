@@ -213,6 +213,13 @@ try:
 except Exception as e:
     logger.error(f"Failed to load admin router: {e}")
 
+try:
+    from backend.api.routers import draft_iq_v2
+    app.include_router(draft_iq_v2.router)
+    logger.info("Draft IQ v2 router loaded")
+except Exception as e:
+    logger.error(f"Failed to load Draft IQ v2 router: {e}")
+
 
 # Metrics endpoint - optional
 if METRICS_AVAILABLE:
