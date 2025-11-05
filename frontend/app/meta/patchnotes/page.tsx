@@ -377,7 +377,7 @@ export default function PatchNotesPage() {
                   <ul className="text-amber-200/70 text-sm list-disc list-inside space-y-1 ml-2">
                     <li>Checking if the patch has been released (Riot publishes notes after the patch goes live)</li>
                     <li>Trying a recent patch like 15.19, 15.18, or 15.17</li>
-                    <li>Visiting Riot's website directly to verify the patch notes URL</li>
+                    <li>Visiting Riot&apos;s website directly to verify the patch notes URL</li>
                   </ul>
                 </div>
               </div>
