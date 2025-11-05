@@ -1,6 +1,7 @@
 /**
  * Google Tag Manager Component
- * Matches Google's official installation instructions exactly
+ * Exact code from Google Tag Manager installation page
+ * Paste as high in <head> as possible
  */
 
 'use client'
@@ -18,7 +19,7 @@ export function GoogleTagManager({ gtmId }: GoogleTagManagerProps) {
 
   return (
     <>
-      {/* Google Tag Manager - Paste as high in <head> as possible */}
+      {/* Google Tag Manager */}
       <Script
         id="gtm-head"
         strategy="afterInteractive"
@@ -32,13 +33,14 @@ export function GoogleTagManager({ gtmId }: GoogleTagManagerProps) {
           `,
         }}
       />
+      {/* End Google Tag Manager */}
     </>
   )
 }
 
 /**
- * Google Tag Manager Noscript Component
- * Must be placed immediately after opening <body> tag
+ * Google Tag Manager (noscript)
+ * Paste this code immediately after the opening <body> tag
  */
 export function GoogleTagManagerNoscript({ gtmId }: { gtmId: string }) {
   if (!gtmId || gtmId === 'GTM-XXXXXXX') {
@@ -46,14 +48,18 @@ export function GoogleTagManagerNoscript({ gtmId }: { gtmId: string }) {
   }
 
   return (
-    <noscript>
-      <iframe
-        src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`}
-        height="0"
-        width="0"
-        style={{ display: 'none', visibility: 'hidden' }}
-      />
-    </noscript>
+    <>
+      {/* Google Tag Manager (noscript) */}
+      <noscript>
+        <iframe
+          src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`}
+          height="0"
+          width="0"
+          style={{ display: 'none', visibility: 'hidden' }}
+        />
+      </noscript>
+      {/* End Google Tag Manager (noscript) */}
+    </>
   )
 }
 

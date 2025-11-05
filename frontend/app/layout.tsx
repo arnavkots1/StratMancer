@@ -75,6 +75,10 @@ export default function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning className="smooth-scroll">
+      <head>
+        {/* Google Tag Manager - Paste as high in <head> as possible */}
+        {gtmId && <GoogleTagManager gtmId={gtmId} />}
+      </head>
       <body
         className={cn(
           inter.className,
@@ -84,9 +88,7 @@ export default function RootLayout({
           "antialiased bg-background text-foreground"
         )}
       >
-        {/* Google Tag Manager - Script loads in head via Next.js Script component */}
-        {gtmId && <GoogleTagManager gtmId={gtmId} />}
-        {/* Google Tag Manager (noscript) - Must be immediately after opening <body> tag */}
+        {/* Google Tag Manager (noscript) - Paste immediately after opening <body> tag */}
         {gtmId && <GoogleTagManagerNoscript gtmId={gtmId} />}
         <ThemeProvider
           attribute="class"

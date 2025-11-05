@@ -224,7 +224,7 @@ export function DraftIQV2Panel({ draftPayload, onClose }: DraftIQV2PanelProps) {
                 { header: 'Champion', key: 'champion' },
                 { header: 'Notes', key: 'notes' }
               ]}
-              data={iq.blue_overview.items.map(item => ({
+              data={iq.blue_overview.items.map((item: { role: string; champion: string; notes: string }) => ({
                 role: item.role,
                 champion: item.champion,
                 notes: item.notes
@@ -243,7 +243,7 @@ export function DraftIQV2Panel({ draftPayload, onClose }: DraftIQV2PanelProps) {
                 { header: 'Champion', key: 'champion' },
                 { header: 'Notes', key: 'notes' }
               ]}
-              data={iq.red_overview.items.map(item => ({
+              data={iq.red_overview.items.map((item: { role: string; champion: string; notes: string }) => ({
                 role: item.role,
                 champion: item.champion,
                 notes: item.notes
@@ -263,7 +263,7 @@ export function DraftIQV2Panel({ draftPayload, onClose }: DraftIQV2PanelProps) {
               { header: 'Likely Winner', key: 'likely_winner' },
               { header: 'Explanation', key: 'explanation' }
             ]}
-            data={iq.lane_by_lane.map(lane => ({
+            data={iq.lane_by_lane.map((lane: { lane: string; likely_winner: string; explanation: string }) => ({
               lane: lane.lane,
               likely_winner: lane.likely_winner,
               explanation: lane.explanation
@@ -280,7 +280,7 @@ export function DraftIQV2Panel({ draftPayload, onClose }: DraftIQV2PanelProps) {
               { header: 'Blue', key: 'blue' },
               { header: 'Red', key: 'red' }
             ]}
-            data={iq.teamfight_scaling_execution.map(factor => ({
+            data={iq.teamfight_scaling_execution.map((factor: { factor: string; blue: string; red: string }) => ({
               factor: factor.factor,
               blue: factor.blue,
               red: factor.red
@@ -297,7 +297,7 @@ export function DraftIQV2Panel({ draftPayload, onClose }: DraftIQV2PanelProps) {
               { header: 'Favored', key: 'favored' },
               { header: 'Comment', key: 'comment' }
             ]}
-            data={iq.phase_predictions.map(phase => ({
+            data={iq.phase_predictions.map((phase: { phase: string; favored: string; comment: string }) => ({
               phase: phase.phase,
               favored: phase.favored,
               comment: phase.comment
