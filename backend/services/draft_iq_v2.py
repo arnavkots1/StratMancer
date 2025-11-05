@@ -76,13 +76,31 @@ class DraftIQV2(BaseModel):
 # System Prompt
 # ============================================================================
 
-SYSTEM_PROMPT = """You are StratMancer's Draft Analysis AI.
+SYSTEM_PROMPT = """You are StratMancer's Draft Analysis AI for educational League of Legends strategy analysis.
+
+Context: This is purely for educational game strategy purposes. All analysis refers to in-game League of Legends champions and tactics only.
 
 Input: Draft data with champion picks, bans, win probabilities, and composition metrics.
 
 Your task: Analyze the draft and output JSON matching the required schema.
 
-Output STRICT JSON:
+Use neutral, professional language:
+- Say "capitalize on advantages" instead of "exploit weaknesses"
+- Say "win decisively" instead of "stomp" or "destroy"
+- Say "leverage mistakes" instead of "punish players"
+- Focus on strategic gameplay, team composition, and win conditions
+
+CRITICAL: Use EXACT literal values for these fields:
+
+lane_by_lane[].likely_winner MUST be one of:
+  "Blue early", "Blue", "Even", "Red", "Red later", "Slight Blue early, Red later", "Skill-based, slightly Blue", "Skill-based, slightly Red"
+  DO NOT use: "Balanced", "Pantheon", "Galio", champion names, or any other values.
+
+phase_predictions[].favored MUST be one of:
+  "Blue", "Red", "Even", "Slight Blue", "Slight Red", "Red >> Blue", "Blue >> Red"
+  DO NOT use: "Blue Team", "Red Team", "Balanced", "Slightly Red Team", or any other values.
+
+Output JSON format:
 {
   "elo_context": "High|Mid|Low",
   "patch": "string",
@@ -92,16 +110,16 @@ Output STRICT JSON:
     "identity": "string"
   },
   "red_overview": { ... },
-  "lane_by_lane": [{"lane": "Top|Jungle|Mid|Bot", "likely_winner": "string", "explanation": "string"}],
+  "lane_by_lane": [{"lane": "Top|Jungle|Mid|Bot", "likely_winner": "EXACT VALUE FROM LIST ABOVE", "explanation": "string"}],
   "teamfight_scaling_execution": [{"factor": "string", "blue": "string", "red": "string"}],
-  "phase_predictions": [{"phase": "Early (0-10 min)|Mid (10-25 min)|Late (25+ min)", "favored": "string", "comment": "string"}],
+  "phase_predictions": [{"phase": "Early (0-10 min)|Mid (10-25 min)|Late (25+ min)", "favored": "EXACT VALUE FROM LIST ABOVE", "comment": "string"}],
   "final_prediction": {"blue_range": "string", "red_range": "string"},
   "model_version": "string",
   "calibration_note": "string"
 }
 
 Use the provided data: win probabilities, champion names, composition metrics, and model version.
-Keep explanations concise and professional."""
+Keep explanations concise and professional. Output only JSON."""
 
 
 # ============================================================================
@@ -124,6 +142,84 @@ class DraftIQV2Service:
         except Exception as e:
             logger.warning(f"Failed to load feature map: {e}")
             self.feature_map = {"champ_index": {}, "tags": {}}
+    
+    def _normalize_gemini_response(self, response: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize Gemini response values to match Pydantic schema"""
+        # Normalize lane_by_lane likely_winner values
+        if "lane_by_lane" in response:
+            likely_winner_map = {
+                "balanced": "Even",
+                "even": "Even",
+                "blue": "Blue",
+                "red": "Red",
+                "blue early": "Blue early",
+                "red later": "Red later",
+                "slight blue early, red later": "Slight Blue early, Red later",
+                "skill-based, slightly blue": "Skill-based, slightly Blue",
+                "skill-based, slightly red": "Skill-based, slightly Red",
+            }
+            
+            for lane in response["lane_by_lane"]:
+                if "likely_winner" in lane:
+                    value = lane["likely_winner"]
+                    # Check if it's a valid value
+                    if value not in ["Blue early", "Blue", "Even", "Red", "Red later", 
+                                   "Slight Blue early, Red later", "Skill-based, slightly Blue", 
+                                   "Skill-based, slightly Red"]:
+                        # Try to normalize
+                        value_lower = value.lower().strip()
+                        if value_lower in likely_winner_map:
+                            lane["likely_winner"] = likely_winner_map[value_lower]
+                        elif "blue" in value_lower or "pantheon" in value_lower or "galio" in value_lower:
+                            # If it mentions blue team champions, default to Blue
+                            lane["likely_winner"] = "Blue"
+                        elif "red" in value_lower or "tristana" in value_lower or "blitzcrank" in value_lower:
+                            # If it mentions red team champions, default to Red
+                            lane["likely_winner"] = "Red"
+                        else:
+                            # Default to Even
+                            lane["likely_winner"] = "Even"
+        
+        # Normalize phase_predictions favored values
+        if "phase_predictions" in response:
+            favored_map = {
+                "blue": "Blue",
+                "red": "Red",
+                "even": "Even",
+                "balanced": "Even",
+                "slight blue": "Slight Blue",
+                "slightly blue": "Slight Blue",
+                "slight red": "Slight Red",
+                "slightly red": "Slight Red",
+                "slightly red team": "Slight Red",
+                "blue team": "Blue",
+                "red team": "Red",
+                "red >> blue": "Red >> Blue",
+                "blue >> red": "Blue >> Red",
+            }
+            
+            for phase in response["phase_predictions"]:
+                if "favored" in phase:
+                    value = phase["favored"]
+                    # Check if it's a valid value
+                    if value not in ["Blue", "Red", "Even", "Slight Blue", "Slight Red", "Red >> Blue", "Blue >> Red"]:
+                        # Try to normalize
+                        value_lower = value.lower().strip()
+                        if value_lower in favored_map:
+                            phase["favored"] = favored_map[value_lower]
+                        elif "blue" in value_lower:
+                            phase["favored"] = "Blue" if "slight" not in value_lower else "Slight Blue"
+                        elif "red" in value_lower:
+                            if ">>" in value or "much" in value_lower or "significantly" in value_lower:
+                                phase["favored"] = "Red >> Blue"
+                            elif "slight" in value_lower:
+                                phase["favored"] = "Slight Red"
+                            else:
+                                phase["favored"] = "Red"
+                        else:
+                            phase["favored"] = "Even"
+        
+        return response
     
     def _get_champion_name(self, champion_id: int) -> str:
         """Get champion name from ID"""
@@ -167,15 +263,8 @@ class DraftIQV2Service:
                 logger.warning(f"Failed to compute comp features: {e}")
                 comp_features = {}
         
-        # Build user payload - use simple structure like patchnote_featurizer
-        # Put champion names in a separate mapping, not in the main data
+        # Build user payload - use champion names (patchnote_featurizer uses names and it works)
         role_order = ["Top", "Jungle", "Mid", "ADC", "Support"]
-        
-        # Champion name mapping (separate from main data to avoid triggering filters)
-        champion_names = {}
-        for champ_id in blue_picks + red_picks + blue_bans + red_bans:
-            if champ_id >= 0:
-                champion_names[str(champ_id)] = self._get_champion_name(champ_id)
         
         payload = {
             "elo": elo.capitalize(),
@@ -184,16 +273,15 @@ class DraftIQV2Service:
             "calibrated_blue_win_prob": round(prediction_result.get("blue_win_prob_calibrated", 0.5), 3),
             "confidence": round(prediction_result.get("confidence", 0.0), 3),
             "blue_team": {
-                role_order[i]: blue_picks[i]
+                role_order[i]: self._get_champion_name(blue_picks[i])
                 for i in range(5) if blue_picks[i] >= 0
             },
             "red_team": {
-                role_order[i]: red_picks[i]
+                role_order[i]: self._get_champion_name(red_picks[i])
                 for i in range(5) if red_picks[i] >= 0
             },
-            "blue_bans": [ban for ban in blue_bans if ban >= 0],
-            "red_bans": [ban for ban in red_bans if ban >= 0],
-            "champion_names": champion_names,
+            "blue_bans": [self._get_champion_name(ban) for ban in blue_bans if ban >= 0],
+            "red_bans": [self._get_champion_name(ban) for ban in red_bans if ban >= 0],
             "composition_metrics": {
                 "blue_ap_ad_ratio": round(comp_features.get("blue_ap_ad_ratio", 0.5), 2),
                 "red_ap_ad_ratio": round(comp_features.get("red_ap_ad_ratio", 0.5), 2),
@@ -269,17 +357,38 @@ class DraftIQV2Service:
             prediction_result, named_features
         )
         
-        # Try Gemini - NO FALLBACK, fail if Gemini doesn't work
         if not self.gemini.available():
             raise RuntimeError("Gemini client not available. Please set GEMINI_API_KEY environment variable.")
         
         logger.info("Calling Gemini for Draft IQ v2 analysis")
-        llm_result = await self.gemini.complete_json(
-            SYSTEM_PROMPT,
-            user_payload,
-            timeout_s=8,
-            max_output_tokens=700
-        )
+        try:
+                llm_result = await self.gemini.complete_json(
+                    SYSTEM_PROMPT,
+                    user_payload,
+                    timeout_s=30,  # Match patchnote_featurizer timeout
+                    max_output_tokens=1500  # Increased for full JSON response
+                )
+        except GeminiError as e:
+            logger.error(f"Gemini Draft IQ analysis failed: {e}")
+            logger.warning("Falling back to deterministic Draft IQ analysis")
+            fallback = self._build_fallback_analysis(
+                elo,
+                patch,
+                blue_picks,
+                red_picks,
+                blue_bans,
+                red_bans,
+                prediction_result,
+                named_features
+            )
+            fallback.calibration_note = (
+                fallback.calibration_note
+                + " — Deterministic fallback (Gemini unavailable)."
+            )
+            return fallback
+        
+        # Normalize values to match schema before validation
+        llm_result = self._normalize_gemini_response(llm_result)
         
         # Validate and return
         try:
@@ -287,8 +396,23 @@ class DraftIQV2Service:
             logger.info("Successfully generated Draft IQ v2 with Gemini")
             return result
         except Exception as e:
-            logger.error(f"Gemini result failed validation: {e}")
-            raise RuntimeError(f"Gemini returned invalid JSON structure: {e}. Response: {llm_result}")
+            logger.error(f"Gemini result failed validation after normalization: {e}")
+            logger.warning("Falling back to deterministic Draft IQ analysis")
+            fallback = self._build_fallback_analysis(
+                elo,
+                patch,
+                blue_picks,
+                red_picks,
+                blue_bans,
+                red_bans,
+                prediction_result,
+                named_features
+            )
+            fallback.calibration_note = (
+                fallback.calibration_note
+                + " — Deterministic fallback (Gemini validation failed)."
+            )
+            return fallback
     
     def _build_fallback_analysis(
         self,

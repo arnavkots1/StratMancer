@@ -34,6 +34,26 @@ class GeminiClient:
         """
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         self.model = None
+        self.model_name = os.getenv("GEMINI_MODEL_NAME", "models/gemini-flash-latest")
+        try:
+            base_temperature = float(os.getenv("GEMINI_TEMPERATURE", "0.3"))
+        except ValueError:
+            base_temperature = 0.3
+        # Generation config as dict (will convert to GenerationConfig when needed)
+        # NOTE: JSON mode causes blocking even with NEGLIGIBLE ratings - disable it
+        # We'll parse JSON from text response instead (like patchnote_featurizer)
+        self.base_generation_config = {
+            # "response_mime_type": "application/json",  # Disabled - causes blocking bug
+            "temperature": base_temperature,
+            "top_p": 0.95,
+            "top_k": 40,
+        }
+        # Don't use safety settings - patchnote_featurizer doesn't use them and it works
+        # Safety settings seem to trigger blocking even with NEGLIGIBLE ratings
+        self.safety_settings = None
+        # Removed safety context note - it might be triggering filters
+        # The prompt itself should be clear enough
+        self._safe_context_note = ""
         self._initialized = False
         
         if not HAS_GEMINI:
@@ -43,14 +63,11 @@ class GeminiClient:
         if self.api_key:
             try:
                 genai.configure(api_key=self.api_key)
-                self.model = genai.GenerativeModel(
-                    'models/gemini-flash-latest',
-                    generation_config={
-                        'response_mime_type': 'application/json',
-                    }
-                )
+                # Match patchnote_featurizer: create model with NO generation_config
+                # Let it use defaults - this avoids JSON mode blocking issues
+                self.model = genai.GenerativeModel(self.model_name)
                 self._initialized = True
-                logger.info("Gemini client initialized")
+                logger.info(f"Gemini client initialized with model={self.model_name} (no generation_config, matching patchnote_featurizer)")
             except Exception as e:
                 logger.error(f"Failed to initialize Gemini client: {e}")
         else:
@@ -90,326 +107,249 @@ class GeminiClient:
         import asyncio
         
         try:
-            # Format user payload as JSON string for the prompt (same style as patchnote_featurizer)
+            # Format user payload as JSON string for the prompt
             user_json_str = json.dumps(user_payload, indent=2)
-            # Match patchnote_featurizer prompt structure exactly
-            full_prompt = f"{system_prompt}\n\nDraft Data:\n{user_json_str}"
-            
-            logger.info(f"Gemini request: prompt_length={len(full_prompt)}, user_payload_keys={list(user_payload.keys())}")
-            
-            # Don't pass safety_settings - match patchnote_featurizer exactly which works
-            # The default safety settings should be fine for game analysis
-            safety_settings = None
-            logger.info("Not passing safety_settings (using defaults, same as patchnote_featurizer)")
-            
-            # Disable JSON mode - patchnote_featurizer doesn't use it and it might be causing blocks
-            # We'll ask for JSON in the prompt and parse it manually (like patchnote_featurizer)
-            generation_config = genai.GenerationConfig(
-                max_output_tokens=max_output_tokens,
-                temperature=0.3,  # Lower temperature for more consistent output
+            logger.info(
+                "Gemini request: payload_chars=%s, user_payload_keys=%s",
+                len(user_json_str),
+                list(user_payload.keys())
             )
             
-            logger.info(f"Gemini generation config: NO JSON mode (matching patchnote_featurizer), max_output_tokens={max_output_tokens}, temperature=0.3")
+            # Build prompt (same style as patchnote_featurizer)
+            # Match patchnote_featurizer format exactly: "{SYSTEM_PROMPT}\n\nMeta Comparison Data:\n{data}"
+            if self._safe_context_note:
+                full_prompt = f"{system_prompt}\n\n{self._safe_context_note}\n\nDraft Data:\n{user_json_str}"
+            else:
+                full_prompt = f"{system_prompt}\n\nDraft Data:\n{user_json_str}"
             
-            # Use the same model name and setup as patchnote_featurizer which works
-            model_name = 'models/gemini-flash-latest'
-            logger.info(f"Using model: {model_name}")
+            # Increase timeout - patchnote_featurizer uses 30s, use 30s for draft analysis too
+            effective_timeout = max(timeout_s, 30)
             
-            # Create model WITHOUT JSON mode (same as patchnote_featurizer)
-            model = genai.GenerativeModel(
-                model_name,
-                generation_config=generation_config
+            logger.info(
+                "Calling Gemini API with timeout=%ss, model=%s (no generation_config, no safety_settings, matching patchnote_featurizer exactly)",
+                effective_timeout,
+                self.model_name
             )
             
-            logger.info(f"Gemini model created (NO JSON mode, matching patchnote_featurizer)")
+            # Match patchnote_featurizer exactly: call generate_content with just the prompt
+            # No generation_config, no safety_settings - let model use defaults
+            response = await asyncio.wait_for(
+                self._call_gemini_async(
+                    self.model,
+                    prompt=full_prompt
+                ),
+                timeout=effective_timeout
+            )
+            logger.info("Gemini API call completed, processing response...")
             
-            # Call API with timeout (no safety settings, same as patchnote_featurizer)
-            try:
-                logger.info(f"Calling Gemini API with timeout={timeout_s}s (no safety_settings, matching patchnote_featurizer)...")
-                response = await asyncio.wait_for(
-                    self._call_gemini_async(model, full_prompt, safety_settings=None),
-                    timeout=timeout_s
-                )
-                logger.info("Gemini API call completed, processing response...")
-            except asyncio.TimeoutError:
-                raise GeminiError(f"Gemini API timeout after {timeout_s}s")
-            
-            # Parse JSON response - handle safety blocks and empty responses
+            # Parse JSON response - GPT recommendation: Check candidate.content.parts FIRST
+            # The response.text property raises ValueError if no content, so we check parts first
             try:
                 logger.debug(f"Gemini response type: {type(response)}")
-                logger.debug(f"Gemini response attributes: {dir(response)}")
                 
-                # Check finish_reason first to see if response was blocked
+                if not response:
+                    logger.error("Gemini returned None response")
+                    raise GeminiError("Gemini returned None response")
+                
+                text = None
+                content_exists = False
+                
+                # GPT recommendation: Check candidate.content.parts FIRST (before accessing response.text)
+                # This avoids triggering ValueError from response.text property getter
                 if hasattr(response, 'candidates') and len(response.candidates) > 0:
                     candidate = response.candidates[0]
                     finish_reason = getattr(candidate, 'finish_reason', None)
-                    finish_reason_name = getattr(candidate, 'finish_reason', None)
+                    logger.debug(f"Gemini response finish_reason: {finish_reason}")
                     
-                    logger.info(f"Gemini response finish_reason: {finish_reason} (type: {type(finish_reason)})")
-                    
-                    # Log safety ratings if available
-                    if hasattr(candidate, 'safety_ratings'):
-                        logger.info(f"Gemini safety ratings: {candidate.safety_ratings}")
-                        for rating in candidate.safety_ratings:
-                            # Log both enum name and numeric value for debugging
-                            prob_name = rating.probability.name if hasattr(rating.probability, 'name') else str(rating.probability)
-                            prob_value = rating.probability.value if hasattr(rating.probability, 'value') else str(rating.probability)
-                            cat_name = rating.category.name if hasattr(rating.category, 'name') else str(rating.category)
-                            cat_value = rating.category.value if hasattr(rating.category, 'value') else str(rating.category)
-                            logger.info(f"  - {cat_name} ({cat_value}): {prob_name} ({prob_value})")
-                    
-                    if finish_reason == 2:  # SAFETY
-                        logger.warning(f"Gemini response has finish_reason SAFETY")
-                        
-                        # Check safety ratings if available
-                        all_negligible = True
-                        safety_ratings_empty = True
-                        if hasattr(candidate, 'safety_ratings') and len(candidate.safety_ratings) > 0:
-                            safety_ratings_empty = False
-                            for rating in candidate.safety_ratings:
-                                prob_name = rating.probability.name if hasattr(rating.probability, 'name') else str(rating.probability)
-                                prob_value = rating.probability.value if hasattr(rating.probability, 'value') else str(rating.probability)
-                                cat_name = rating.category.name if hasattr(rating.category, 'name') else str(rating.category)
-                                logger.warning(f"  Safety rating: {cat_name}: {prob_name} ({prob_value})")
-                                # Check if probability is NEGLIGIBLE (value 1) or LOW (value 2)
-                                if prob_value > 2:  # MEDIUM (3) or HIGH (4)
-                                    all_negligible = False
-                                    logger.error(f"    ^ High risk detected in {cat_name}")
-                        else:
-                            logger.warning("  No safety ratings available (empty array)")
-                            # If ratings are empty, assume it's not a high-risk block
-                            all_negligible = True
-                        
-                        # Force extract content even if blocked - try ALL possible methods
-                        content_extracted = False
-                        text = None
-                        
-                        # Method 1: Try candidate.content.parts
-                        if hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
+                    # Check if content actually exists in candidate.content.parts (even if finish_reason=SAFETY)
+                    if hasattr(candidate, 'content'):
+                        if hasattr(candidate.content, 'parts'):
+                            parts = candidate.content.parts
+                            logger.debug(f"Gemini candidate.content.parts exists, length: {len(parts) if parts else 0}")
+                            
                             parts_text = []
-                            for part in candidate.content.parts:
-                                if hasattr(part, 'text') and part.text:
-                                    parts_text.append(part.text)
-                                # Also try accessing part directly
-                                try:
-                                    part_str = str(part)
-                                    if part_str and part_str not in parts_text:
-                                        parts_text.append(part_str)
-                                except:
-                                    pass
+                            for i, part in enumerate(parts):
+                                if hasattr(part, 'text'):
+                                    part_text = getattr(part, 'text', None)
+                                    if part_text:
+                                        parts_text.append(part_text)
+                                        logger.debug(f"Gemini part {i} has text ({len(part_text)} chars)")
+                                    else:
+                                        logger.debug(f"Gemini part {i} has text attr but is empty")
+                                else:
+                                    logger.debug(f"Gemini part {i} has no text attribute")
+                            
                             if parts_text:
                                 text = ' '.join(parts_text).strip()
-                                content_extracted = True
-                                logger.info(f"Extracted content via candidate.content.parts ({len(text)} chars)")
-                        
-                        # Method 2: Force access response.text (catch ValueError and try anyway)
-                        if not content_extracted:
-                            try:
-                                if hasattr(response, 'text'):
-                                    text = response.text.strip()
-                                    if text:
-                                        content_extracted = True
-                                        logger.info(f"Extracted content via response.text ({len(text)} chars)")
-                            except ValueError as e:
-                                # Even if it raises ValueError, try to get the text anyway
-                                logger.warning(f"response.text raised ValueError, but trying to force access: {e}")
-                                try:
-                                    # Try to access the underlying text via _raw_response
-                                    if hasattr(response, '_raw_response'):
-                                        raw = response._raw_response
-                                        if hasattr(raw, 'candidates') and len(raw.candidates) > 0:
-                                            cand = raw.candidates[0]
-                                            if hasattr(cand, 'content') and hasattr(cand.content, 'parts'):
-                                                for part in cand.content.parts:
-                                                    if hasattr(part, 'text'):
-                                                        text = part.text.strip()
-                                                        if text:
-                                                            content_extracted = True
-                                                            logger.info(f"Force extracted content via _raw_response ({len(text)} chars)")
-                                                            break
-                                    # Also try accessing candidate directly
-                                    if not content_extracted and hasattr(candidate, 'content') and hasattr(candidate.content, 'parts'):
-                                        for part in candidate.content.parts:
-                                            # Try to get text even if it says it's blocked
-                                            try:
-                                                part_text = part.text
-                                                if part_text:
-                                                    text = part_text.strip()
-                                                    content_extracted = True
-                                                    logger.info(f"Force extracted via direct part.text access ({len(text)} chars)")
-                                                    break
-                                            except:
-                                                # Try alternative access
-                                                try:
-                                                    part_dict = part.to_dict() if hasattr(part, 'to_dict') else {}
-                                                    if 'text' in part_dict:
-                                                        text = part_dict['text'].strip()
-                                                        content_extracted = True
-                                                        logger.info(f"Force extracted via part.to_dict() ({len(text)} chars)")
-                                                        break
-                                                except:
-                                                    pass
-                                except Exception as e2:
-                                    logger.debug(f"Force extraction failed: {e2}")
-                            except Exception as e:
-                                logger.debug(f"Could not access response.text: {e}")
-                        
-                        # Method 3: Try to get text from response object directly
-                        if not content_extracted:
-                            try:
-                                # Try accessing response.parts directly
-                                if hasattr(response, 'parts'):
-                                    parts_text = []
-                                    for part in response.parts:
-                                        if hasattr(part, 'text'):
-                                            parts_text.append(part.text)
-                                    if parts_text:
-                                        text = ' '.join(parts_text).strip()
-                                        content_extracted = True
-                                        logger.info(f"Extracted content via response.parts ({len(text)} chars)")
-                            except Exception as e:
-                                logger.debug(f"Could not access response.parts: {e}")
-                        
-                        # If we still couldn't extract, try to bypass the safety check entirely
-                        if not content_extracted:
-                            # Last resort: try to get ANY text from the response object
-                            logger.warning("All extraction methods failed, trying final bypass attempt...")
-                            try:
-                                # Try to serialize the response and extract text from it
-                                import json as json_module
-                                response_str = str(response)
-                                response_dict = response.__dict__ if hasattr(response, '__dict__') else {}
-                                
-                                # Try to find text in the response structure
-                                def find_text_in_obj(obj, depth=0):
-                                    if depth > 5:  # Limit recursion
-                                        return None
-                                    if isinstance(obj, str) and len(obj) > 50:
-                                        # Looks like content
-                                        if '{' in obj and '}' in obj:  # Might be JSON
-                                            return obj
-                                    if isinstance(obj, dict):
-                                        for v in obj.values():
-                                            result = find_text_in_obj(v, depth+1)
-                                            if result:
-                                                return result
-                                    if isinstance(obj, (list, tuple)):
-                                        for item in obj:
-                                            result = find_text_in_obj(item, depth+1)
-                                            if result:
-                                                return result
-                                    return None
-                                
-                                found_text = find_text_in_obj(response_dict)
-                                if found_text:
-                                    text = found_text
-                                    content_extracted = True
-                                    logger.info(f"Found text via deep search ({len(text)} chars)")
-                            except Exception as e:
-                                logger.debug(f"Deep search failed: {e}")
-                        
-                        # Final check - if still no content, check if it's a prompt issue
-                        if not content_extracted:
-                            logger.error("CRITICAL: Gemini blocked response but no content available")
-                            logger.error(f"finish_reason: SAFETY, safety_ratings_empty: {safety_ratings_empty}, all_negligible: {all_negligible}")
-                            
-                            # If no safety ratings, the prompt itself might be triggering filters
-                            if safety_ratings_empty:
-                                logger.error("Empty safety ratings suggest the prompt content may be triggering safety filters")
-                                logger.error("This might be due to champion names, game terminology, or prompt structure")
-                                raise GeminiError("Gemini blocked response - prompt content may be triggering safety filters. Try simplifying the prompt or checking if specific champion names are causing issues.")
-                            elif all_negligible:
-                                logger.error("All ratings NEGLIGIBLE but still blocked - this is a Gemini API limitation")
-                                raise GeminiError("Gemini API is blocking responses despite NEGLIGIBLE safety ratings. This is a known Gemini API limitation with JSON mode.")
+                                content_exists = True
+                                if finish_reason == 2:  # SAFETY
+                                    logger.warning(f"Gemini finish_reason=SAFETY but content exists in parts - using it ({len(text)} chars)")
+                                else:
+                                    logger.debug(f"Gemini response text length: {len(text)} chars")
                             else:
-                                raise GeminiError("Gemini response blocked by safety filters (finish_reason: SAFETY) - high-risk content detected")
+                                logger.debug(f"Gemini candidate.content.parts exists but no text found in parts")
                         else:
-                            # Successfully extracted content
-                            logger.info(f"Successfully extracted content from blocked response ({len(text)} chars)")
-                    elif finish_reason == 1:  # STOP (normal completion)
-                        logger.info("Gemini response completed normally (STOP)")
-                        # Normal completion, proceed with text extraction
-                        text = response.text.strip()
-                        logger.debug(f"Gemini response text length: {len(text)}")
+                            logger.debug(f"Gemini candidate.content has no parts attribute")
                     else:
-                        logger.warning(f"Gemini response has finish_reason: {finish_reason}")
-                        # Other finish reasons (RECITATION, MAX_TOKENS, etc.)
-                        if hasattr(response, 'text'):
-                            text = response.text.strip()
-                            logger.debug(f"Gemini response text length: {len(text)}")
-                        else:
-                            raise GeminiError(f"Gemini response has unexpected finish_reason: {finish_reason}, no text available")
-                else:
-                    logger.warning("Gemini response has no candidates, trying text attribute")
-                    # Fallback to text attribute
-                    if not hasattr(response, 'text'):
-                        raise GeminiError("Gemini response has no text attribute or candidates")
-                    
-                    # Try to access text (will raise ValueError if blocked)
-                    text = response.text.strip()
-                    logger.debug(f"Gemini response text length: {len(text)}")
-            except ValueError as e:
-                # Safety block or empty response
-                logger.error(f"Gemini ValueError: {e}")
-                if "finish_reason" in str(e) or "no valid Part" in str(e):
-                    raise GeminiError(f"Gemini response blocked or empty: {str(e)}")
-                raise GeminiError(f"Gemini response error: {str(e)}")
-            
-            if not text:
-                raise GeminiError("Gemini returned empty response")
-            
-            # Clean up any markdown code fences or extra whitespace
-            # Since we're not using JSON mode, Gemini might wrap the response in code fences
-            if text.startswith("```json"):
-                text = text[7:]
-            elif text.startswith("```"):
-                text = text[3:]
-            if text.endswith("```"):
-                text = text[:-3]
-            text = text.strip()
-            
-            # Try to find JSON object in the response (in case there's extra text before/after)
-            # This is important since we're not using JSON mode
-            import re
-            json_match = re.search(r'\{.*\}', text, re.DOTALL)
-            if json_match:
-                text = json_match.group(0)
-                logger.debug("Extracted JSON object from response text")
-            else:
-                # If no JSON found, log the first 500 chars for debugging
-                logger.warning(f"No JSON object found in response. First 500 chars: {text[:500]}")
-                raise GeminiError("Gemini response does not contain valid JSON object. Response: " + text[:200])
-            
-            try:
-                result = json.loads(text)
-                logger.debug(f"Gemini returned JSON with {len(str(result))} chars")
-                return result
-            except json.JSONDecodeError as e:
-                logger.error(f"Failed to parse Gemini JSON: {e}")
-                logger.error(f"Response text (first 500 chars): {text[:500]}")
-                raise GeminiError(f"Invalid JSON response from Gemini: {e}")
+                        logger.debug(f"Gemini candidate has no content attribute")
                 
+                # If no content in parts, try response.text directly (patchnote_featurizer approach)
+                # BUT: response.text property raises ValueError if no content, so wrap in try-except
+                if not content_exists:
+                    try:
+                        # Access response.text - this will raise ValueError if no content
+                        text = response.text.strip()
+                        content_exists = True
+                        logger.debug(f"Gemini response text length: {len(text)} chars")
+                    except ValueError as e:
+                        # ValueError means no content available (finish_reason=SAFETY with no parts)
+                        logger.warning(f"Gemini response.text raised ValueError: {e}")
+                        finish_reason_str = ""
+                        if hasattr(response, 'candidates') and len(response.candidates) > 0:
+                            candidate = response.candidates[0]
+                            finish_reason = getattr(candidate, 'finish_reason', None)
+                            finish_reason_str = f" (finish_reason: {finish_reason})"
+                            
+                            # Check safety ratings for debugging
+                            if hasattr(candidate, 'safety_ratings') and len(candidate.safety_ratings) > 0:
+                                all_negligible = True
+                                for rating in candidate.safety_ratings:
+                                    prob_value = rating.probability.value if hasattr(rating.probability, 'value') else 999
+                                    if prob_value > 2:
+                                        all_negligible = False
+                                        break
+                                if all_negligible:
+                                    logger.warning(f"All safety ratings NEGLIGIBLE but no content available{finish_reason_str}")
+                        
+                        raise GeminiError(f"Gemini response blocked or empty: {str(e)}{finish_reason_str}")
+                    except AttributeError as e:
+                        logger.warning(f"Gemini response has no text attribute: {e}")
+                        raise GeminiError(f"Gemini response has no text attribute: {str(e)}")
+                
+                # If we get here, we have text - continue with JSON extraction
+                if not text:
+                    raise GeminiError("Gemini returned empty response")
+                    
+                # Clean up any markdown code fences or extra whitespace
+                # Gemini can sometimes wrap JSON in code fences even when JSON mode is requested
+                if text.startswith("```json"):
+                    text = text[7:]
+                elif text.startswith("```"):
+                    text = text[3:]
+                if text.endswith("```"):
+                    text = text[:-3]
+                text = text.strip()
+                
+                # Try to find JSON object in the response (in case there's extra text before/after)
+                # Models can sometimes prepend explanations even when JSON is requested
+                import re
+                json_match = re.search(r'\{.*\}', text, re.DOTALL)
+                if json_match:
+                    text = json_match.group(0)
+                    logger.debug("Extracted JSON object from response text")
+                else:
+                    # If no JSON found, log the first 500 chars for debugging
+                    logger.warning(f"No JSON object found in response. First 500 chars: {text[:500]}")
+                    raise GeminiError("Gemini response does not contain valid JSON object. Response: " + text[:200])
+                
+                try:
+                    result = json.loads(text)
+                    logger.debug(f"Gemini returned JSON with {len(str(result))} chars")
+                    return result
+                except json.JSONDecodeError as e:
+                    logger.error(f"Failed to parse Gemini JSON: {e}")
+                    logger.error(f"Response text length: {len(text)} chars")
+                    logger.error(f"Response text (first 500 chars): {text[:500]}")
+                    logger.error(f"Response text (last 500 chars): {text[-500:]}")
+                    
+                    # Check if JSON is truncated (common error patterns)
+                    if "Expecting" in str(e) and ("delimiter" in str(e) or "value" in str(e)):
+                        logger.warning("JSON appears to be truncated. Attempting to fix...")
+                        # Try to fix common truncation issues
+                        fixed_text = self._fix_truncated_json(text)
+                        if fixed_text != text:
+                            try:
+                                result = json.loads(fixed_text)
+                                logger.info("Successfully fixed truncated JSON")
+                                return result
+                            except json.JSONDecodeError:
+                                logger.warning("Failed to fix truncated JSON")
+                    
+                    raise GeminiError(f"Invalid JSON response from Gemini: {e}")
+                    
+            except GeminiError:
+                raise
+            except Exception as e:
+                logger.error(f"Gemini API call failed: {e}", exc_info=True)
+                raise GeminiError(f"Gemini API error: {str(e)}")
+        except asyncio.TimeoutError:
+            raise GeminiError(f"Gemini API timeout after {effective_timeout}s")
         except GeminiError:
             raise
         except Exception as e:
             logger.error(f"Gemini API call failed: {e}", exc_info=True)
             raise GeminiError(f"Gemini API error: {str(e)}")
     
-    async def _call_gemini_async(self, model, prompt: str, safety_settings=None):
-        """Helper to run sync Gemini call in async context (same as patchnote_featurizer)"""
+    async def _call_gemini_async(self, model, prompt=None, contents=None, safety_settings=None, generation_config=None):
+        """Helper to run sync Gemini call in async context"""
         import asyncio
         
         # Run in executor since genai is sync
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         
-        # Generate content (same as patchnote_featurizer - no safety_settings parameter)
+        # Generate content - match patchnote_featurizer exactly
+        # patchnote_featurizer calls: model.generate_content(prompt) with NO kwargs
         def _generate():
-            logger.info("Gemini calling generate_content (no safety_settings, matching patchnote_featurizer)")
-            result = model.generate_content(prompt)
+            # Match patchnote_featurizer: call generate_content with just the prompt, no kwargs
+            if prompt:
+                logger.info(
+                    "Gemini calling generate_content with prompt only (matching patchnote_featurizer exactly)"
+                )
+                # NO kwargs - let model use defaults (no generation_config, no safety_settings)
+                result = model.generate_content(prompt)
+            elif contents:
+                logger.info(
+                    "Gemini calling generate_content with contents only"
+                )
+                result = model.generate_content(contents)
+            else:
+                raise ValueError("Either prompt or contents must be provided")
+            
             logger.info(f"Gemini generate_content result type: {type(result)}")
             return result
         
         return await loop.run_in_executor(None, _generate)
+    
+    def _fix_truncated_json(self, text: str) -> str:
+        """Attempt to fix truncated JSON by closing open structures"""
+        # Remove trailing incomplete tokens
+        text = text.strip()
+        
+        # Count open braces/brackets
+        open_braces = text.count('{') - text.count('}')
+        open_brackets = text.count('[') - text.count(']')
+        
+        # If JSON is incomplete, try to close it
+        if open_braces > 0 or open_brackets > 0:
+            # Remove incomplete last token (usually after a comma)
+            # Look for patterns like: "key": "incomplete value
+            # Or: "key": [incomplete
+            import re
+            
+            # Remove trailing incomplete string (after last complete value)
+            # Pattern: ends with incomplete quote or incomplete array/object
+            if text.endswith('"') or text.endswith("'"):
+                # Incomplete string, remove it
+                text = re.sub(r',\s*"[^"]*"?\s*$', '', text)
+            elif re.search(r',\s*"[^"]*$', text):
+                # Incomplete string value, remove the incomplete entry
+                text = re.sub(r',\s*"[^"]*$', '', text)
+            
+            # Close open structures
+            text += '}' * open_braces
+            text += ']' * open_brackets
+        
+        return text
 
 
 # Global instance

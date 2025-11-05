@@ -35,7 +35,7 @@ export async function explainDraftV2(
   payload: DraftIQV2Payload
 ): Promise<DraftIQV2Response> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+  const timeoutId = setTimeout(() => controller.abort(), 40000); // 40s timeout (backend uses 30s + buffer)
 
   try {
     const res = await fetch(`${API_BASE}/draft-iq/v2/explain`, {

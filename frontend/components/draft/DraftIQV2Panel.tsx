@@ -68,12 +68,20 @@ export function DraftIQV2Panel({ draftPayload, onClose }: DraftIQV2PanelProps) {
     explainDraftV2(normalized)
       .then((result) => {
         if (!cancelled) {
+          console.log('Draft IQ v2 response received:', result)
+          if (!result || !result.json) {
+            console.error('Invalid response structure:', result)
+            setError('Invalid response from server')
+            setLoading(false)
+            return
+          }
           setData(result)
           setLoading(false)
         }
       })
       .catch((err) => {
         if (!cancelled) {
+          console.error('Draft IQ v2 error:', err)
           setError(err.message || 'Failed to generate analysis')
           setLoading(false)
         }
