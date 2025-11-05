@@ -170,7 +170,6 @@ const scaleIn = maybeReduce({
 import { DraftBoard, type DraftAction } from '@/components/draft/DraftBoard';
 import { RecommendationsPanel } from '@/components/draft/RecommendationsPanel';
 import { DraftIQV2Panel } from '@/components/draft/DraftIQV2Panel';
-import { explainDraftV2 } from '@/lib/iqV2Api';
 import { ConfidenceIndicator } from '@/components/ConfidenceIndicator';
 import { DataWarning } from '@/components/DataWarning';
 import type { 
