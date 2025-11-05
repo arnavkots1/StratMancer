@@ -271,8 +271,8 @@ class RiotAPIClient:
             logger.warning(f"Failed to get patch from DDragon: {e}")
         
         # Fallback to a reasonable recent patch
-        logger.warning("Using fallback patch version 15.20")
-        return "15.20"
+        logger.warning("Using fallback patch version 15.21")
+        return "15.21"
     
     def get_champion_data(self) -> Dict[str, Any]:
         """

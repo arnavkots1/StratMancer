@@ -614,8 +614,32 @@ class RecommenderService:
                 champ_name = self._get_champion_name(champ_id)
                 reasons = self._generate_pick_explanation(champ_id, elo, enemy_side, threat)
                 
-                # Reframe reasons as threats
-                threat_reasons = [r.replace('+', 'Enemy ') for r in reasons]
+                # Convert pick explanations to threat explanations with more context
+                threat_reasons = []
+                for r in reasons:
+                    if r.startswith('+'):
+                        # Remove + and add "Enemy" prefix with context
+                        clean_reason = r[1:].strip()
+                        if 'engage' in clean_reason.lower():
+                            threat_reasons.append("Strong engage threat")
+                        elif 'mobility' in clean_reason.lower():
+                            threat_reasons.append("High mobility threat")
+                        elif 'damage' in clean_reason.lower():
+                            threat_reasons.append("Enemy " + clean_reason.lower())
+                        elif 'cc' in clean_reason.lower() or 'crowd control' in clean_reason.lower():
+                            threat_reasons.append("Crowd control threat")
+                        elif 'scaling' in clean_reason.lower():
+                            threat_reasons.append("Late game scaling threat")
+                        elif 'early' in clean_reason.lower():
+                            threat_reasons.append("Early power spike threat")
+                        else:
+                            threat_reasons.append("Enemy " + clean_reason.lower())
+                    else:
+                        threat_reasons.append("Enemy " + r.lower())
+                
+                # Ensure at least one threat explanation
+                if not threat_reasons:
+                    threat_reasons.append("High threat champion")
                 
                 ban_recommendations.append({
                     'champion_id': champ_id,

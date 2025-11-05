@@ -7,6 +7,8 @@ import { SiteHeader } from '@/components/SiteHeader'
 import { Footer } from '@/components/Footer'
 import { CookieConsent } from '@/components/CookieConsent'
 import { AnalyticsProvider } from '@/components/providers/AnalyticsProvider'
+import { GoogleTagManager, GoogleTagManagerNoscript } from '@/components/GoogleTagManager'
+import { getSearchConsoleMetadata } from '@/components/GoogleSearchConsole'
 import { cn } from '../lib/cn'
 import { MotionProvider } from '@/components/providers/MotionProvider'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
@@ -51,6 +53,7 @@ export const metadata: Metadata = {
     description: 'AI-powered draft analysis and win prediction for League of Legends with elite UI and advanced machine learning',
     creator: '@riftai',
   },
+  ...getSearchConsoleMetadata(),
 }
 
 export const viewport: Viewport = {
@@ -68,6 +71,8 @@ export default function RootLayout({
 }: {
   children: ReactNode
 }) {
+  const gtmId = process.env.NEXT_PUBLIC_GTM_ID
+
   return (
     <html lang="en" suppressHydrationWarning className="smooth-scroll">
       <body
@@ -79,6 +84,10 @@ export default function RootLayout({
           "antialiased bg-background text-foreground"
         )}
       >
+        {/* Google Tag Manager - Script loads in head via Next.js Script component */}
+        {gtmId && <GoogleTagManager gtmId={gtmId} />}
+        {/* Google Tag Manager (noscript) - Must be immediately after opening <body> tag */}
+        {gtmId && <GoogleTagManagerNoscript gtmId={gtmId} />}
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

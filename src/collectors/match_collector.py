@@ -34,7 +34,7 @@ class MatchCollector:
     DIVISIONS = ['I', 'II', 'III', 'IV']
     
     # Standard tiers (not including Master+)
-    STANDARD_TIERS = ['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'DIAMOND']
+    STANDARD_TIERS = ['IRON', 'BRONZE', 'SILVER', 'GOLD', 'PLATINUM', 'EMERALD', 'DIAMOND']
     
     def __init__(self, api_key: str, region: str = 'na1', 
                  save_raw: bool = False):
@@ -70,7 +70,7 @@ class MatchCollector:
         logger.info(f"Match collector initialized for patch {self.current_patch}")
         logger.info(f"PUUID cache loaded: {cache_stats['total_entries']} entries")
     
-    def collect_for_rank(self, rank: str, target_matches: int = 100) -> List[MatchData]:
+    def collect_for_rank(self, rank: str, target_matches: int = 100) -> int:
         """
         Collect matches for a specific rank.
         
@@ -79,7 +79,7 @@ class MatchCollector:
             target_matches: Target number of matches to collect
             
         Returns:
-            List of collected MatchData objects
+            Number of matches collected (matches are saved to disk incrementally)
         """
         rank = rank.upper()
         logger.info(f"Starting collection for {rank} (target: {target_matches} matches)")
@@ -90,24 +90,26 @@ class MatchCollector:
         
         if not summoners:
             logger.warning(f"No summoners found for {rank}")
-            return []
+            return 0
         
         # Collect matches
         collected_matches = []
+        total_collected = 0  # Track total matches collected
         
         with tqdm(total=target_matches, desc=f"Collecting {rank}") as pbar:
             for summoner in summoners:
-                if len(collected_matches) >= target_matches:
+                if total_collected >= target_matches:
                     break
                 
                 try:
                     matches = self._collect_summoner_matches(
                         summoner['puuid'], 
                         rank,
-                        limit=min(20, target_matches - len(collected_matches))
+                        limit=min(20, target_matches - total_collected)
                     )
                     
                     collected_matches.extend(matches)
+                    total_collected += len(matches)
                     pbar.update(len(matches))
                     
                     # Save incrementally
@@ -126,8 +128,8 @@ class MatchCollector:
         # Save PUUID cache
         self.puuid_cache.save()
         
-        logger.info(f"Collection complete for {rank}")
-        return collected_matches
+        logger.info(f"Collection complete for {rank}: {total_collected} matches collected")
+        return total_collected
     
     def collect_all_ranks(self, ranks: List[str] = None, matches_per_rank: int = 100):
         """
@@ -319,7 +321,7 @@ def main():
     parser.add_argument(
         '--ranks',
         nargs='+',
-        help='Ranks to collect (IRON, BRONZE, SILVER, GOLD, PLATINUM, DIAMOND, MASTER, GRANDMASTER, CHALLENGER)',
+        help='Ranks to collect (IRON, BRONZE, SILVER, GOLD, PLATINUM, EMERALD, DIAMOND, MASTER, GRANDMASTER, CHALLENGER)',
         default=None
     )
     

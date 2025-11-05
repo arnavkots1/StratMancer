@@ -169,6 +169,8 @@ const scaleIn = maybeReduce({
 })
 import { DraftBoard, type DraftAction } from '@/components/draft/DraftBoard';
 import { RecommendationsPanel } from '@/components/draft/RecommendationsPanel';
+import { DraftIQV2Panel } from '@/components/draft/DraftIQV2Panel';
+import { explainDraftV2 } from '@/lib/iqV2Api';
 import { ConfidenceIndicator } from '@/components/ConfidenceIndicator';
 import { DataWarning } from '@/components/DataWarning';
 import type { 
@@ -217,6 +219,10 @@ export default function DraftPage() {
   const [recommendations, setRecommendations] = useState<any>(null);
   const [recommendationLoading, setRecommendationLoading] = useState(false);
   const [recommendationError, setRecommendationError] = useState<string | null>(null);
+  
+  // Draft IQ v2 state
+  const [showDraftIQV2, setShowDraftIQV2] = useState(false);
+  const [draftIQV2Payload, setDraftIQV2Payload] = useState<any>(null);
 
   // Require explicit start to begin any draft interactions
   const [draftStarted, setDraftStarted] = useState<boolean>(false);
@@ -296,9 +302,16 @@ export default function DraftPage() {
   }, []);
 
 
-  // Pick timer countdown
+  // Pick timer countdown - stops when draft is complete
   useEffect(() => {
-    if (!timerActive) return;
+    // Stop timer if draft is complete
+    const isComplete = draftStep >= totalSteps;
+    if (isComplete && timerActive) {
+      setTimerActive(false);
+      return;
+    }
+    
+    if (!timerActive || isComplete) return;
     
     if (pickTimer <= 0) {
       setTimerActive(false);
@@ -311,7 +324,7 @@ export default function DraftPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [timerActive, pickTimer]);
+  }, [timerActive, pickTimer, draftStep, totalSteps]);
 
   const loadChampions = async () => {
     try {
@@ -355,6 +368,33 @@ export default function DraftPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleExplainDraftV2 = async () => {
+    // Build payload for Draft IQ v2
+    const payload = {
+      elo: draftState.elo,
+      patch: draftState.patch || '15.20',
+      blue: {
+        top: draftState.blue.top ? parseInt(draftState.blue.top.id) : -1,
+        jgl: draftState.blue.jungle ? parseInt(draftState.blue.jungle.id) : -1,
+        mid: draftState.blue.mid ? parseInt(draftState.blue.mid.id) : -1,
+        adc: draftState.blue.adc ? parseInt(draftState.blue.adc.id) : -1,
+        sup: draftState.blue.support ? parseInt(draftState.blue.support.id) : -1,
+        bans: draftState.blueBans.map(c => parseInt(c.id)),
+      },
+      red: {
+        top: draftState.red.top ? parseInt(draftState.red.top.id) : -1,
+        jgl: draftState.red.jungle ? parseInt(draftState.red.jungle.id) : -1,
+        mid: draftState.red.mid ? parseInt(draftState.red.mid.id) : -1,
+        adc: draftState.red.adc ? parseInt(draftState.red.adc.id) : -1,
+        sup: draftState.red.support ? parseInt(draftState.red.support.id) : -1,
+        bans: draftState.redBans.map(c => parseInt(c.id)),
+      },
+    };
+    
+    setDraftIQV2Payload(payload);
+    setShowDraftIQV2(true);
   };
 
   const handlePredictDraft = async () => {
@@ -655,10 +695,10 @@ export default function DraftPage() {
                     Live Draft Intelligence
                   </Badge>
                   <h1 className="text-3xl font-semibold text-white md:text-5xl">
-                    Holographic Draft Command Window
+                    Draft Command Window
                   </h1>
                   <p className="max-w-xl text-sm text-white/65 md:text-base">
-                    Coordinate bans and picks with RiftAI&apos;s predictive engine. Watch AI reasoning unfold
+                    Coordinate bans and picks with RiftAI&apos;s predictive engine. Watch reasoning unfold
                     as we forecast every matchup pivot in real-time.
                   </p>
                 </div>
@@ -687,7 +727,7 @@ export default function DraftPage() {
                 />
               </div>
               <div className="text-xs text-white/60">
-                {prediction ? 'AI Analysis Active' : 'Awaiting Draft Data'}
+                {prediction ? 'Analysis Active' : 'Awaiting Draft Data'}
               </div>
             </m.div>
 
@@ -802,6 +842,13 @@ export default function DraftPage() {
                       >
                         Reset Board
                       </Button>
+                      <Button
+                        variant="outline"
+                        onClick={handleExplainDraftV2}
+                        className="rounded-xl border border-primary/40 bg-black/30 px-6 py-3 text-xs uppercase tracking-[0.28em] text-primary/80 hover:text-primary hover:border-primary/60"
+                      >
+                        Explain (V2)
+                      </Button>
                     </div>
                   </div>
                 </m.div>
@@ -818,6 +865,24 @@ export default function DraftPage() {
                 </m.div>
               </div>
             </m.section>
+
+            {/* Draft IQ v2 Modal */}
+            {showDraftIQV2 && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                {/* Backdrop */}
+                <div 
+                  className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                  onClick={() => setShowDraftIQV2(false)}
+                />
+                {/* Modal Content */}
+                <div className="relative w-full max-w-6xl max-h-[90vh] overflow-hidden rounded-[28px] border border-white/10 bg-[#0d1424]/95 backdrop-blur-xl shadow-2xl">
+                  <DraftIQV2Panel
+                    draftPayload={draftIQV2Payload}
+                    onClose={() => setShowDraftIQV2(false)}
+                  />
+                </div>
+              </div>
+            )}
 
             {prediction && (
               <m.section

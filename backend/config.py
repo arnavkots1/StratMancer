@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     # Authentication
     API_KEY: Optional[str] = os.getenv("STRATMANCER_API_KEY", "dev-key-change-in-production")
     
+    # Gemini AI (for patch note featurization)
+    GEMINI_API_KEY: Optional[str] = None
+    
     # CORS - Security: Only allow specific origins
     CORS_ORIGINS: List[str] = [
         "http://localhost:3000",
@@ -33,7 +36,7 @@ class Settings(BaseSettings):
     
     # Security Settings
     MAX_PAYLOAD_SIZE: int = int(os.getenv("MAX_PAYLOAD_SIZE", "32768"))  # 32KB
-    REQUEST_TIMEOUT: int = int(os.getenv("REQUEST_TIMEOUT", "3"))  # 3 seconds
+    REQUEST_TIMEOUT: int = int(os.getenv("REQUEST_TIMEOUT", "60"))  # 60 seconds (increased for Gemini analysis)
     ENABLE_METRICS: bool = os.getenv("ENABLE_METRICS", "true").lower() == "true"
     ENABLE_TRACING: bool = os.getenv("ENABLE_TRACING", "true").lower() == "true"
     

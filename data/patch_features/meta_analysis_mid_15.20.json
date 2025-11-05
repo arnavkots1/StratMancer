@@ -1,0 +1,104 @@
+{
+  "patch": "15.20",
+  "champions": [
+    {
+      "name": "Kalista",
+      "category": "Buff",
+      "impact": 42.91,
+      "affected_tags": [
+        "damage",
+        "scaling",
+        "burst"
+      ],
+      "notes": "Extreme win rate (71.4%) suggests a massive shift in itemization or specific mechanic exploitation. Though the pick rate is low (0.6%), this indicates a highly potent niche or OTP domination. Strategically, her early power spike combined with current on-hit or sustained damage build paths makes her nearly unbeatable when piloted correctly, benefiting from the immediate execution potential of Rend (E) on objectives and champions."
+    },
+    {
+      "name": "Twitch",
+      "category": "Buff",
+      "impact": 35.25,
+      "affected_tags": [
+        "damage",
+        "scaling",
+        "stealth"
+      ],
+      "notes": "Dominant win rate (64.8%) paired with high pick and ban rates. This signals that Twitch's late-game scaling is currently coming online too quickly, or there is insufficient early-game jungle pressure to punish his vulnerable laning phase. The success hinges on his ability to utilize stealth (Q) for unparalleled positioning in skirmishes, translating item advantages into overwhelming team fight damage (R). Counters to late-game scaling appear too weak."
+    },
+    {
+      "name": "Malphite",
+      "category": "Buff",
+      "impact": 34.61,
+      "affected_tags": [
+        "cc",
+        "burst",
+        "survivability"
+      ],
+      "notes": "Highest ban rate (14.5%) and 63.3% WR indicate oppressive power. Strategic analysis suggests that AP Malphite build paths (or tank builds providing too much base damage) are allowing him to instantly eliminate squishy backline threats with his ultimate (R). His high win rate is driven by reliable, unavoidable engagement, which is warping the drafting phase against teams lacking cleanse or immediate mitigation tools."
+    },
+    {
+      "name": "Kennen",
+      "category": "Buff",
+      "impact": 20.14,
+      "affected_tags": [
+        "cc",
+        "aoe",
+        "mobility"
+      ],
+      "notes": "Significant WR increase (59.6%). Kennen thrives in a meta requiring reliable AOE crowd control and zone denial. The shift suggests that high-mobility skirmish champions are prevalent, making Kennen's guaranteed flash R combo an essential tool for neutralizing threats and locking down team fights. His energy mechanic and item synergy make him a consistent side-laner who transitions into a primary team fight initiator."
+    },
+    {
+      "name": "Cho'Gath",
+      "category": "Buff",
+      "impact": 17.77,
+      "affected_tags": [
+        "survivability",
+        "scaling",
+        "objective_control"
+      ],
+      "notes": "Elevated win rate (58.2%). Cho'Gath is capitalizing on two factors: the prioritization of objective control (his ultimate R executes epic monsters reliably) and the increased viability of scaling tanks. Itemization likely favors stacked health and resistances, allowing him to bypass the usual mid-game slump and become an unkillable front line that dictates team fight space through massive AOE disruption (Q/W) and enormous health pools."
+    },
+    {
+      "name": "Orianna",
+      "category": "Buff",
+      "impact": 15.71,
+      "affected_tags": [
+        "cc",
+        "control",
+        "scaling"
+      ],
+      "notes": "High WR (57.4%) for a control mage signals a favorable meta shift away from dominant assassins or long-range poke champions. Orianna's reliable wave clear and powerful team fight utility (Shockwave R) allow her to stabilize the mid lane and transition her advantage into coordinate objective skirmishes. She dictates the pace of the mid game, forcing enemies to play around her Ball positioning."
+    },
+    {
+      "name": "Nami",
+      "category": "Adjust",
+      "impact": 10.63,
+      "affected_tags": [
+        "healing",
+        "cc",
+        "utility"
+      ],
+      "notes": "Highest pick rate (10.8%) indicates she is the meta-defining utility support, despite a moderate 54.3% WR. Her popularity is fueled by excellent synergy with dominant ADC picks (like Twitch and Samira), providing chain CC (Q, R) and powerful lane sustain/empowerment (E, W). Her strategic value lies in her flexibility and strong disengage/engage toolkit."
+    }
+  ],
+  "source": "gemini",
+  "priors": {},
+  "synergies": {
+    "16": {
+      "champion_name": "Soraka",
+      "synergies": [
+        {
+          "champion_id": 22,
+          "champion_name": "Ashe",
+          "win_rate": 1.0,
+          "synergy_score": 0.494
+        },
+        {
+          "champion_id": 27,
+          "champion_name": "Singed",
+          "win_rate": 0.3333,
+          "synergy_score": -0.1667
+        }
+      ],
+      "explanation": "Soraka pairs exceptionally strong with Ashe (win rate: 100.0%, synergy: +49.4%). Also pairs well with Singed."
+    }
+  }
+}

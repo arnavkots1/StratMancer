@@ -59,13 +59,28 @@ export function RecommendationsPanel({
   }, [recommendations, lockedChampionIds, lockedChampionNames])
 
   useEffect(() => {
+    // Combine all reasons from top recommendation into a detailed reasoning
+    const topRec = filteredRecommendations[0]
+    let text = headline
+    
+    if (topRec?.reasons && topRec.reasons.length > 0) {
+      // Combine all reasons into a comprehensive explanation
+      const reasons = topRec.reasons.slice(0, 3) // Use top 3 reasons
+      
+      // If we have multiple reasons, combine them
+      if (reasons.length > 1) {
+        const lastReason = reasons.pop()
+        text = `${reasons.join(", ")}, and ${lastReason}.`
+      } else {
+        text = reasons[0]
+      }
+    }
+    
     if (reduceMotion) {
-      const primaryReason = filteredRecommendations[0]?.reasons?.[0] ?? ""
-      setDisplayedReason(primaryReason)
+      setDisplayedReason(text)
       return
     }
 
-    const text = filteredRecommendations[0]?.reasons?.[0] ?? headline
     if (!text) {
       setDisplayedReason("")
       return
@@ -209,7 +224,7 @@ export function RecommendationsPanel({
         <m.header variants={fadeUp} className="space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.28em] text-white/40">AI Guidance</p>
+              <p className="text-xs uppercase tracking-[0.28em] text-white/40">Guidance</p>
               <h3 className="text-lg font-semibold text-white">
                 {currentAction
                   ? currentAction.action === "ban"
@@ -218,7 +233,6 @@ export function RecommendationsPanel({
                   : "Draft Complete"}
               </h3>
             </div>
-            <Sparkles className="h-5 w-5 text-accent" />
           </div>
           <p className="text-sm text-white/60">{headline}</p>
         </m.header>
@@ -228,7 +242,7 @@ export function RecommendationsPanel({
           className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/30 p-4"
         >
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.25),transparent_60%)] opacity-60" />
-          <div className="relative text-xs uppercase tracking-[0.28em] text-white/40">AI Reasoning</div>
+          <div className="relative text-xs uppercase tracking-[0.28em] text-white/40">Reasoning</div>
           <m.p
             key={displayedReason}
             initial={{ opacity: 0, y: 10 }}
@@ -291,7 +305,9 @@ export function RecommendationsPanel({
                 : "Calibrated win impact"
               : "Draft resolved"}
           </span>
-          <span>{filteredRecommendations.length} options</span>
+          <div className="flex items-center gap-3">
+            <span>{filteredRecommendations.length} options</span>
+          </div>
         </div>
       </div>
     </m.section>

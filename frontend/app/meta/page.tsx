@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { m } from 'framer-motion';
 import { TrendingUp, AlertCircle, Gauge, Activity } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -261,7 +262,9 @@ export default function MetaPage() {
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(124,58,237,0.18),transparent_60%)] opacity-80" />
             <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
               <div className="space-y-3">
-                <span className="text-xs uppercase tracking-[0.28em] text-white/40">Meta Dashboard</span>
+                <div className="flex items-center gap-4 flex-wrap">
+                  <span className="text-xs uppercase tracking-[0.28em] text-white/40">Meta Dashboard</span>
+                </div>
                 <h1 className="text-3xl font-semibold text-white">Rift Trends Insight</h1>
                 <p className="max-w-xl text-sm text-white/60">
                   Compare balance swings across patches, surface high-impact champions, and calibrate your draft prep using live ladder telemetry.

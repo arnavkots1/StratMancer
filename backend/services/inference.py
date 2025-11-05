@@ -37,6 +37,12 @@ class InferenceService:
         self._initialized = False
         self._feature_contexts: Dict[str, FeatureContext] = {}
     
+    def clear_cache(self):
+        """Clear loaded models to force reload."""
+        self.models.clear()
+        self._initialized = False
+        logger.info("Inference service cache cleared - models will reload on next request")
+    
     def initialize(self):
         """Lazy initialization of models and resources"""
         if self._initialized:
@@ -85,6 +91,7 @@ class InferenceService:
         logger.info(f"Loading model for {elo} ELO...")
         
         try:
+            # Load latest model (cache cleared on server restart or manual reload)
             model, calibrator, calibrator_method, modelcard = load_ml_model(
                 elo_group=elo,
                 model_dir=settings.MODEL_DIR
@@ -284,46 +291,35 @@ class InferenceService:
 
         filled_slots = sum(1 for cid in blue_pick_list if cid not in (-1, None)) + \
                        sum(1 for cid in red_pick_list if cid not in (-1, None))
-        info_ratio = max(0.0, min(filled_slots / 10.0, 1.0))
         
-        # More conservative shrinking to prevent extreme predictions
-        # Even with complete drafts, we don't trust the model 100%
-        base_shrink = 0.35  # minimum shrink toward neutral (was 0.25)
-        dynamic_shrink = info_ratio * 0.35  # reduced from 0.5 to be less aggressive
-        shrink_factor = min(base_shrink + dynamic_shrink, 0.70)  # cap at 70% (was 75%)
-
-        def _shrink(prob: float, factor: float) -> float:
-            return float(0.5 + (prob - 0.5) * factor)
-
-        adjusted_raw = _shrink(raw_prob, shrink_factor)
-        adjusted_calibrated = _shrink(calibrated_prob, shrink_factor)
+        # REMOVED SHRINK FUNCTION - Models are trained with 60% blue bias
+        # The shrink was neutralizing the blue bias by pulling predictions toward 50%
+        # We want to preserve the model's blue bias predictions
         
-        # Additional safety caps to prevent extreme predictions
-        # Apply to ALL drafts (including complete ones) to handle overfitted models
+        # Only apply minimal safety caps for incomplete drafts to prevent extreme predictions
+        # Complete drafts (10 slots) use model predictions directly
         if filled_slots < 8:
-            # Incomplete drafts: very conservative
-            adjusted_raw = max(0.20, min(0.80, adjusted_raw))
-            adjusted_calibrated = max(0.20, min(0.80, adjusted_calibrated))
-        else:
-            # Complete drafts: still apply safety caps but allow more variation
-            adjusted_raw = max(0.15, min(0.85, adjusted_raw))
-            adjusted_calibrated = max(0.15, min(0.85, adjusted_calibrated))
-
-        selected_prob = adjusted_calibrated if calibrated_for_ui else adjusted_raw
+            # Incomplete drafts: apply conservative caps to prevent extreme predictions
+            raw_prob = max(0.25, min(0.75, raw_prob))
+            calibrated_prob = max(0.25, min(0.75, calibrated_prob))
+        
+        selected_prob = calibrated_prob if calibrated_for_ui else raw_prob
         
         logger.debug(
-            "Raw: %.4f, Calibrated: %.4f, Selected: %.4f, Filled slots: %s, Info ratio: %.2f, Shrink: %.3f",
+            "Raw: %.4f, Calibrated: %.4f, Selected: %.4f, Filled slots: %d",
             raw_prob,
             calibrated_prob,
             selected_prob,
             filled_slots,
-            info_ratio,
-            shrink_factor,
         )
         
         # Calculate confidence using standard formula: |p - 0.5| * 200
         # This gives 0% for 50/50 and 100% for 100/0 or 0/100
         # Using 200 multiplier to get full 0-100% range (original formula with * 100 gave 0-50%)
+        # 
+        # NOTE: Low confidence (5-15%) is expected when predictions are close to 50/50.
+        # This indicates the model sees the draft as relatively balanced/uncertain, which is correct behavior.
+        # Higher confidence would only occur if the model strongly favors one side (e.g., 60%+ or 40%-).
         confidence = float(abs(selected_prob - 0.5) * 200)
         
         # For complete drafts, boost confidence slightly to reflect model certainty
@@ -336,6 +332,8 @@ class InferenceService:
         # DEBUG: Log confidence calculation details
         logger.info(f"CONFIDENCE DEBUG: selected_prob={selected_prob:.4f}, confidence={confidence:.2f}%")
         logger.info(f"CONFIDENCE DEBUG: filled_slots={filled_slots}, complete_draft_boost={filled_slots >= 10}")
+        if confidence < 15:
+            logger.info(f"CONFIDENCE DEBUG: Low confidence due to near-neutral prediction (close to 50/50). This is expected for balanced drafts.")
         
         # Generate simple explanations based on composition features
         explanations = self._generate_explanations(named, selected_prob)
@@ -351,14 +349,13 @@ class InferenceService:
             'model_version': f"{elo}-{model_type}-{modelcard.get('timestamp', 'unknown')[:8]}",
             'elo_group': elo,
             'patch': patch,
-            'blue_win_prob_raw': adjusted_raw,
-            'blue_win_prob_calibrated': adjusted_calibrated,
+            'blue_win_prob_raw': raw_prob,
+            'blue_win_prob_calibrated': calibrated_prob,
             'calibration_method': calibrator_method,
             'feature_context': {
                 'mode': context.mode if context else 'basic',
                 'flags': context.flags.__dict__ if context else {},
                 'filled_slots': filled_slots,
-                'info_ratio': info_ratio,
             },
         }
         

@@ -226,6 +226,8 @@ export default function ChampionPicker({
         ) : (
           filteredChampions.map((champion, index) => {
             const disabled = isChampionDisabled(champion);
+            const isPicked = selectedChampions.some(c => c.id === champion.id);
+            const isBanned = bannedChampions.some(c => c.id === champion.id);
             return (
               <button
                 key={`champ-${champion.id}-${champion.name}-${index}`}
@@ -233,6 +235,11 @@ export default function ChampionPicker({
                 className={`champion-card ${disabled ? 'disabled' : ''}`}
                 disabled={disabled}
                 title={champion.name}
+                style={{
+                  opacity: isPicked || isBanned ? 0.3 : 1,
+                  filter: isPicked || isBanned ? 'grayscale(100%) brightness(0.5)' : 'none',
+                  cursor: disabled ? 'not-allowed' : 'pointer',
+                }}
               >
                 {/* Champion Image from Data Dragon */}
                 <img
@@ -255,6 +262,13 @@ export default function ChampionPicker({
                 </div>
                 
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                {(isPicked || isBanned) && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-10">
+                    <span className="text-xs font-bold text-white/80 uppercase">
+                      {isPicked ? 'Picked' : 'Banned'}
+                    </span>
+                  </div>
+                )}
                 <div className="absolute bottom-0 left-0 right-0 p-2">
                   <div className="text-xs font-semibold text-white text-center truncate drop-shadow-lg">
                     {champion.name}

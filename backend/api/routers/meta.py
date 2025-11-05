@@ -9,7 +9,9 @@ from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from backend.api.schemas import ErrorResponse
+from backend.config import settings
 from backend.services.meta_tracker import meta_tracker, MetaComputationError
+from backend.services.patchnote_featurizer import patchnote_featurizer
 from ml_pipeline.meta_utils import normalize_patch
 
 logger = logging.getLogger(__name__)
@@ -87,6 +89,66 @@ async def get_meta_trends(elo: str):
     except Exception as exc:  # pragma: no cover
         logger.error(f"Failed retrieving meta trends: {exc}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to fetch meta trends")
+
+
+@router.get(
+    "/patchnotes/{patch}",
+    responses={
+        200: {"description": "Patch analysis retrieved"},
+        404: {"model": ErrorResponse, "description": "Patch analysis not found"},
+        500: {"model": ErrorResponse, "description": "Failed to analyze patch"},
+    },
+)
+async def get_patchnotes_features(
+    patch: str,
+    elo: str = Query("mid", description="ELO group (low, mid, high)"),
+    refresh: bool = Query(False, description="Force refresh and bypass cache")
+):
+    """
+    Get patch analysis for a specific patch using our collected match data.
+    
+    Uses Gemini AI to analyze champion performance changes between patches
+    and explain what's good/bad and why. Falls back to heuristic analysis if Gemini
+    is unavailable.
+    
+    Args:
+        patch: Patch version (e.g., "15.20")
+        elo: ELO group (low, mid, high) - defaults to "mid"
+        refresh: If True, bypass cache and force fresh analysis
+    
+    Returns:
+    - patch: Normalized patch version
+    - champions: List of champion changes with impact scores and explanations
+    - source: "gemini", "heuristic", or "none"
+    - priors: Dict mapping champion_id -> impact features
+    """
+    try:
+        patch_norm = normalize_patch(patch)
+        logger.info(f"Fetching patch analysis for {elo} patch {patch_norm} (refresh={refresh})")
+        
+        features = await patchnote_featurizer.get_patch_features(patch_norm, elo=elo, use_cache=not refresh)
+        
+        # Even if champions is empty, return the structure (might be fetching or parsing in progress)
+        if not features:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No patch note features available for patch {patch_norm}. The patch may not exist or patch notes may not be available yet."
+            )
+        
+        # Return features even if champions list is empty (could be processing)
+        return features
+        
+    except HTTPException:
+        raise
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Invalid patch format: {str(exc)}")
+    except Exception as exc:
+        logger.error(f"Failed to fetch patch notes for {patch}: {exc}", exc_info=True)
+        error_detail = str(exc) if settings.DEBUG else "Failed to fetch patch note features"
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_detail
+        )
 
 
 @router.get(

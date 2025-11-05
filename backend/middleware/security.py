@@ -214,6 +214,9 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         
         logger.info("Request received", extra=sanitize_log_data(log_data))
         
+        # Skip timeout for patch analysis endpoints (they may take 30-60s for Gemini)
+        skip_timeout = "/meta/patchnotes" in request.url.path
+        
         try:
             # Check payload size
             content_length = request.headers.get("content-length")
@@ -230,8 +233,11 @@ class SecurityMiddleware(BaseHTTPMiddleware):
             if request.url.path in ["/predict-draft", "/recommend/pick", "/recommend/ban"]:
                 await self._validate_prediction_request(request, request.url.path)
             
-            # Process request with timeout
-            response = await self._process_with_timeout(request, call_next)
+            # Process request with timeout (skip for long-running endpoints)
+            if skip_timeout:
+                response = await call_next(request)
+            else:
+                response = await self._process_with_timeout(request, call_next)
             
             # Log response
             duration = time.time() - start_time

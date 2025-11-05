@@ -39,3 +39,7 @@ apscheduler>=3.10.0
 # Security & Dependency Scanning
 pip-audit>=2.6.0
 safety>=2.3.0
+
+# Patch Note Featurization
+google-generativeai>=0.3.0
+beautifulsoup4>=4.12.0

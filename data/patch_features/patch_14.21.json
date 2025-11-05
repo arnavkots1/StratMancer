@@ -1,0 +1,583 @@
+{
+  "patch": "14.21",
+  "champions": [
+    {
+      "name": "Game",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "on the game balance side of things, we\u2019re tweaking the on-hit space with changes to blade of the ruined king and lethal tempo, nerfing sorc shoes to be more comparable to other boots, and otherwise ma"
+    },
+    {
+      "name": "Potential",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "potential bounty gold is now reduced by 1 for every 4 gold given away to killers and assisters on death."
+    },
+    {
+      "name": "Negative",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "a negative bounty is a baseline devaluation of a champion\u2019s kill gold. unlike positive bounties, this reduced value is also factored into assist gold (unchanged)."
+    },
+    {
+      "name": "While",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "while in a negative state, base gold value is reduced by 1 for every 4 gold given to killers and assisters on death."
+    },
+    {
+      "name": "While",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "while in a negative state, base gold value is increased by 1 for every 4 gold earned from kills and assists. shut down gold is applied to negative bounties."
+    },
+    {
+      "name": "While",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "while in a negative state, base gold value is increased by 1 for every 10 gold earned from minions and monsters."
+    },
+    {
+      "name": "Addition",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "in addition to champion bounties, we\u2019re also changing objective bounties in this patch. while the champion bounty changes were large in scope, this update is mostly under-the-hood cleanup aimed at mak"
+    },
+    {
+      "name": "Objective",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "objective bounties are decreased by 20-40% in situations where the losing team is already coming back."
+    },
+    {
+      "name": "Base",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "base health decreased. e damage decreased."
+    },
+    {
+      "name": "Asol",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "asol is a bit too strong at the moment and could use being brought down to earth. as a scaler who reaches high heights late game, wanting to push on his early game where he\u2019s supposed to be vulnerable"
+    },
+    {
+      "name": "Health",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "health regen and ad increased."
+    },
+    {
+      "name": "Azir",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "azir is overall a bit weaker than he\u2019s meant to be. this does not mean he\u2019s supposed to have a 50% win rate at all levels of play, as he\u2019s rather difficult and doesn\u2019t have that many mains, but he\u2019s s"
+    },
+    {
+      "name": "Mana",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "mana regen reduced. passive damage decreased. q mana cost increased."
+    },
+    {
+      "name": "Base",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "base health reduced. w damage reduced. e damage reduced. r damage reduced."
+    },
+    {
+      "name": "Camille",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "camille is currently one of the best-performing top laners in the game and is due for a nerf. we\u2019re taking down her damage and health in order to give more champions a fighting chance but we\u2019d like to"
+    },
+    {
+      "name": "Passive",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "passive damage increased. w damage increased. r damage increased."
+    },
+    {
+      "name": "Armor",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "armor growth decreased."
+    },
+    {
+      "name": "Mana",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "mana decreased."
+    },
+    {
+      "name": "Galio",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "galio is hard to deal with in lane and only gets more difficult to kill once he purchases hollow radiance. we\u2019re nerfing his (almost highest in the game) base mana to increase his early vulnerability "
+    },
+    {
+      "name": "Mana",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "mana regen increased. e recharge time reduced."
+    },
+    {
+      "name": "Passive",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "passive damage decreased."
+    },
+    {
+      "name": "Gwen",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "gwen has proven to be exceptionally strong as of late and is due for a meaningful nerf. her power curve is steeper than we\u2019d like overall, so we don\u2019t want to weaken her early laning phase, we do want"
+    },
+    {
+      "name": "Damage",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "qq damage decreased. e cooldown increased."
+    },
+    {
+      "name": "Mana",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "q cooldown, mana cost, and bonus to minions reduced. q damage increased. q cooldown reduction during r removed."
+    },
+    {
+      "name": "Irelia",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "irelia is quite sad currently in both top and mid and overly reliant on waiting for her first item spike, so we\u2019d like to buff her base kit, especially early game. we want to emphasize good ability us"
+    },
+    {
+      "name": "Passive",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "passive damage decreased."
+    },
+    {
+      "name": "Damage",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "r damage decreased."
+    },
+    {
+      "name": "Karthus",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "karthus got stronger when early game snowballing and magic resist were both made weaker and as a now-dominant jungler, it\u2019s time for a nerf. we\u2019re targeting his late game r to make his playing-against"
+    },
+    {
+      "name": "Damage",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "q damage decreased. e damage decreased."
+    },
+    {
+      "name": "Kassadin",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "kassadin was a big winner from our recent reductions to early game snowball and is now too strong, so we're nerfing him. we think his early game is appropriate but that his ratios should continue to g"
+    },
+    {
+      "name": "Mana",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "w mana cost reduced."
+    },
+    {
+      "name": "Base",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "base health increased."
+    },
+    {
+      "name": "Passive",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "passive life steal reduced. q damage decreased."
+    },
+    {
+      "name": "Nasus",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "nasus has been quite strong since patch 14.19\u2019s reduction in gold value, so it\u2019s time for his nerf. his early sustain is quite high considering how well he scales, so we\u2019re targeting his sustain and e"
+    },
+    {
+      "name": "Auto",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "nilah\u2019s auto attack should no longer cancel when her q buff runs out"
+    },
+    {
+      "name": "Health",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "health regen increased. w damage increased."
+    },
+    {
+      "name": "Armor",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "armor and armor growth reduced."
+    },
+    {
+      "name": "Base",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "base ad increased. q damage increased."
+    },
+    {
+      "name": "Sivir",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "sivir has languished as generically a bit weak, which we\u2019re hoping to rectify by giving her more control over her early and mid game. for those who don\u2019t want to do the math, these q changes represent"
+    },
+    {
+      "name": "Demon",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "it\u2019s demon time! swain is receiving a sweeping update aimed at making him much more consistent and giving him more personal agency over his successes and failures. he\u2019s receiving this increase in pers"
+    },
+    {
+      "name": "Hand",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "death\u2019s hand will be doing about 10% more damage at long range and have a lower mana cost to make those ranged trades better. these buffs are being compensated with a small decrease to his melee range"
+    },
+    {
+      "name": "Vision",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "vision of empire is being compressed to not require skill rank-ups as strongly as before, primarily through front-loading the slow and reveal duration. it\u2019s meant to still be a competitive option to m"
+    },
+    {
+      "name": "Changes",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "nevermove\u2019s changes are the most important in this patch. its acceleration has been re-implemented with more modern missile tech, removing randomness from its travel time. its return is now more consi"
+    },
+    {
+      "name": "Demonic",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "demonic ascension is meant to represent less of swain\u2019s overall power, allowing swain to rely more on his stronger basic abilities. the chief nerf here is to cooldown. though it now scales plainly wit"
+    },
+    {
+      "name": "Damage",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "w damage increased."
+    },
+    {
+      "name": "Bonus",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "w bonus armor decreased."
+    },
+    {
+      "name": "Taric",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "taric has been one of the statistically strongest supports for a while despite not feeling like he\u2019s winning the game for his team. he started performing even better this split, so it\u2019s finally time f"
+    },
+    {
+      "name": "Base",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "base health increased. w movement speed increased."
+    },
+    {
+      "name": "Armor",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "armor growth decreased."
+    },
+    {
+      "name": "Viego",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "viego is performing a bit too well so we're nerfing him. he's particularly strong in lower mmr when accounting for mastery, so we\u2019re lowering his late game armor, which he currently has plenty of."
+    },
+    {
+      "name": "Cooldown",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "e cooldown increased."
+    },
+    {
+      "name": "Volibear",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "volibear has been strong for a while and we're finally nerfing him. his rod of ages + navori build is really interesting and unique, but his cooldowns aren't tuned around this newfound cdr access. we\u2019"
+    },
+    {
+      "name": "Damage",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "w damage increased."
+    },
+    {
+      "name": "Damage",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "w damage decreased."
+    },
+    {
+      "name": "Yone",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "yone is a touch too powerful right now and his combat lacks a bit of counterplay. he\u2019s receiving a simultaneous nerf via blade of the ruined king and a smaller buff via lethal tempo. with those in min"
+    },
+    {
+      "name": "Damage",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "pet damage decreased."
+    },
+    {
+      "name": "Believe",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "we believe lethal tempo is slightly underpowered on melee champions so we're buffing its melee attack speed."
+    },
+    {
+      "name": "Nerfs",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "nerfs"
+    },
+    {
+      "name": "Buffs",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "buffs"
+    },
+    {
+      "name": "Buffs",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "buffs"
+    },
+    {
+      "name": "Nerfs",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "nerfs"
+    },
+    {
+      "name": "Buffs",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "buffs"
+    },
+    {
+      "name": "Nerfs",
+      "category": "Nerf",
+      "impact": -0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "nerfs"
+    },
+    {
+      "name": "Fixed",
+      "category": "Buff",
+      "impact": 0.1,
+      "affected_tags": [
+        "damage"
+      ],
+      "notes": "fixed an issue where auto attacking with red buff would be considered an ability for spear of shojin."
+    }
+  ],
+  "source": "heuristic",
+  "priors": {}
+}
